@@ -12,6 +12,11 @@ const els = {
   toiletQty: document.getElementById("toiletQty"),
   basinFaucetQty: document.getElementById("basinFaucetQty"),
   showerFaucetQty: document.getElementById("showerFaucetQty"),
+  kitchenFaucetQty: document.getElementById("kitchenFaucetQty"),
+  bathAccessoryQty: document.getElementById("bathAccessoryQty"),
+  towelWarmerQty: document.getElementById("towelWarmerQty"),
+  bathHeaterQty: document.getElementById("bathHeaterQty"),
+  bathtubQty: document.getElementById("bathtubQty"),
   grabBarQty: document.getElementById("grabBarQty"),
   vanityRows: document.getElementById("vanityRows"),
   mirrorRows: document.getElementById("mirrorRows"),
@@ -27,7 +32,12 @@ const CATEGORY_MAP = {
   vanity: ["浴櫃/臉盆組", "臉盆浴櫃組", "浴櫃", "臉盆"],
   mirror: ["鏡櫃", "鏡子", "鏡子/鏡櫃", "開放櫃"],
   basinFaucet: ["面盆龍頭", "臉盆龍頭"],
-  showerFaucet: ["沐浴龍頭", "浴用龍頭"],
+  showerFaucet: ["沐浴龍頭", "浴用龍頭", "控溫沐浴龍頭組"],
+  kitchenFaucet: ["廚房龍頭", "電漿滅菌廚房龍頭"],
+  bathAccessory: ["浴室配件", "滑桿/蓮蓬頭"],
+  towelWarmer: ["電熱毛巾架"],
+  bathHeater: ["浴室暖風乾燥機"],
+  bathtub: ["浴缸"],
   grabBar: ["扶手", "無障礙", "無障礙/扶手"]
 };
 
@@ -270,6 +280,21 @@ function buildDemands() {
 
   const showerQty = parseNumber(els.showerFaucetQty.value);
   if (showerQty > 0) demands.push({ id: "showerFaucet", type: "showerFaucet", label: "沐浴龍頭", qty: showerQty });
+
+  const kitchenQty = parseNumber(els.kitchenFaucetQty.value);
+  if (kitchenQty > 0) demands.push({ id: "kitchenFaucet", type: "kitchenFaucet", label: "廚房龍頭", qty: kitchenQty });
+
+  const accessoryQty = parseNumber(els.bathAccessoryQty.value);
+  if (accessoryQty > 0) demands.push({ id: "bathAccessory", type: "bathAccessory", label: "浴室配件", qty: accessoryQty });
+
+  const towelWarmerQty = parseNumber(els.towelWarmerQty.value);
+  if (towelWarmerQty > 0) demands.push({ id: "towelWarmer", type: "towelWarmer", label: "電熱毛巾架", qty: towelWarmerQty });
+
+  const bathHeaterQty = parseNumber(els.bathHeaterQty.value);
+  if (bathHeaterQty > 0) demands.push({ id: "bathHeater", type: "bathHeater", label: "浴室暖風機", qty: bathHeaterQty });
+
+  const bathtubQty = parseNumber(els.bathtubQty.value);
+  if (bathtubQty > 0) demands.push({ id: "bathtub", type: "bathtub", label: "浴缸", qty: bathtubQty });
 
   const grabQty = parseNumber(els.grabBarQty.value);
   if (grabQty > 0) demands.push({ id: "grabBar", type: "grabBar", label: "扶手 / 無障礙配件", qty: grabQty, requireAccessible: true });
