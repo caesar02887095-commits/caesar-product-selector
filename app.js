@@ -258,7 +258,10 @@ function drawResults(selected, discount, budget) {
 
 function createProductCard(product, qty, discount, discountedUnit, subtotalDiscounted) {
   const officialUrl = product.officialUrl || buildCaesarProductUrl(product.model);
-  const imageContent = product.imageUrl ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.model)}" loading="lazy">` : `<span>無圖片<br>可補圖片URL</span>`;
+  const previewUrl = product.imageUrl || buildWebpageThumbnailUrl(officialUrl);
+  const imageContent = previewUrl
+    ? `<img src="${escapeAttr(previewUrl)}" alt="${escapeAttr(product.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span class="fallback-label" style="display:none;">官網預覽</span>`
+    : `<span class="fallback-label">官網預覽</span>`;
   const comboBadge = product.isCombo ? `<span class="combo-badge">組合品項</span>` : "";
 
   const card = document.createElement("article");
@@ -309,7 +312,10 @@ function buildAltSection(product, qty, discount) {
     const diff = (altDiscounted - currentDiscounted) * qty;
     const diffText = diff >= 0 ? `+${money(diff)}` : `-${money(Math.abs(diff))}`;
     const url = alt.officialUrl || buildCaesarProductUrl(alt.model);
-    const thumb = alt.imageUrl ? `<img src="${escapeAttr(alt.imageUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy">` : `<span>無圖</span>`;
+    const altPreviewUrl = alt.imageUrl || buildWebpageThumbnailUrl(url);
+    const thumb = altPreviewUrl
+      ? `<img src="${escapeAttr(altPreviewUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none;">官網預覽</span>`
+      : `<span>官網預覽</span>`;
     const combo = alt.isCombo ? `<small>組合寬度：${alt.width}mm</small>` : `<small>${escapeHtml(alt.features || "")}</small>`;
 
     return `
@@ -360,9 +366,27 @@ function getProductKey(product) {
 function buildCaesarProductUrl(model) {
   const value = String(model || "").trim().toUpperCase();
   if (!value) return "";
-  const useGoogleSearch = value.includes("/") || value.includes(" ") || value.includes("+") || value === "DF140EV";
-  if (useGoogleSearch) return "https://www.google.com/search?q=" + encodeURIComponent("凱撒衛浴 " + value);
-  return "https://www.caesar.com.tw/product/detail/" + encodeURIComponent(value);
+
+  if (value === "DF140EV") {
+    return "https://www.google.com/search?q=" + encodeURIComponent("凱撒衛浴 " + value);
+  }
+
+  const firstToken = value
+    .split("+")[0]
+    .split("/")[0]
+    .replace(/\(.*?\)/g, "")
+    .trim();
+
+  if (firstToken && /^[A-Z0-9-]+$/.test(firstToken)) {
+    return "https://www.caesar.com.tw/product/detail/" + encodeURIComponent(firstToken);
+  }
+
+  return "https://www.google.com/search?q=" + encodeURIComponent("凱撒衛浴 " + value);
+}
+
+function buildWebpageThumbnailUrl(pageUrl) {
+  if (!pageUrl || !pageUrl.startsWith("https://www.caesar.com.tw/")) return "";
+  return "https://image.thum.io/get/width/600/crop/600/noanimate/" + pageUrl;
 }
 
 function parseCSV(text) {
