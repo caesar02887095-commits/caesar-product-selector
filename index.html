@@ -58,6 +58,14 @@
           <input id="includeBidetSeat" type="checkbox" />
           <span>需要電腦馬桶蓋</span>
         </div>
+        <label>
+          <span>馬桶糞管距離</span>
+          <select id="toiletPipe">
+            <option value="unknown">不確定，先保留可用方案</option>
+            <option value="300">30cm</option>
+            <option value="400">40cm</option>
+          </select>
+        </label>
         <div class="qty-field">
           <span>面盆龍頭數量</span>
           <div class="stepper" data-target="basinFaucetQty">
@@ -73,6 +81,10 @@
             <input id="showerFaucetQty" type="number" min="0" value="1" readonly />
             <button type="button" class="step-btn plus" aria-label="沐浴龍頭數量增加">＋</button>
           </div>
+        </div>
+        <div class="check-row sub-check">
+          <input id="includeShowerSlider" type="checkbox" />
+          <span>沐浴龍頭搭配滑桿 / 蓮蓬頭</span>
         </div>
         <div class="qty-field">
           <span>廚房龍頭數量</span>

@@ -11,6 +11,8 @@ const els = {
   accessible: document.getElementById("accessibleInput"),
   toiletQty: document.getElementById("toiletQty"),
   includeBidetSeat: document.getElementById("includeBidetSeat"),
+  toiletPipe: document.getElementById("toiletPipe"),
+  includeShowerSlider: document.getElementById("includeShowerSlider"),
   basinFaucetQty: document.getElementById("basinFaucetQty"),
   showerFaucetQty: document.getElementById("showerFaucetQty"),
   kitchenFaucetQty: document.getElementById("kitchenFaucetQty"),
@@ -79,6 +81,14 @@ document.querySelectorAll(".stepper").forEach((stepper) => {
 
 if (els.includeBidetSeat) {
   els.includeBidetSeat.addEventListener("change", markDirty);
+}
+
+
+if (els.toiletPipe) {
+  els.toiletPipe.addEventListener("change", markDirty);
+}
+if (els.includeShowerSlider) {
+  els.includeShowerSlider.addEventListener("change", markDirty);
 }
 
 loadProducts();
@@ -299,6 +309,7 @@ function scoreCandidateForBudget(item, demand) {
   // 智慧馬桶仍可被選到，但不應該壓過合理的馬桶座組合。
   if (item.sourceType === "馬桶+便座") score += 2500;
   if (item.sourceType === "智慧馬桶") score -= 800;
+  if (item.sourceType === "沐浴龍頭+滑桿" || item.sourceType === "沐浴龍頭含滑桿") score += 1200;
 
   return score;
 }
@@ -368,10 +379,49 @@ function getDemandRows(container) {
 }
 
 
+
+function firstModelCode(item) {
+  return String(item.model || "").split(/[\/+]/)[0].trim();
+}
+
+function supportsPipe(item, pipe) {
+  if (!pipe || pipe === "unknown") return true;
+
+  const model = String(item.model || "");
+  const size = String(item.size || "");
+  const notes = String(item.notes || "");
+  const text = `${model} ${size} ${notes}`;
+
+  if (pipe === "400") {
+    if (/CA1484S/.test(model)) return true;
+    if (/CF14|C14|CT14|CB14|CTH14|CTA14/.test(model)) return true;
+    if (/400管距|管距400|排水距離.*400/.test(text)) return true;
+    return false;
+  }
+
+  if (pipe === "300") {
+    if (/CA1484S/.test(model)) return false;
+    if (/CF14|C14|CT14|CB14|CTH14|CTA14/.test(model) && !/CF13|C13|CT13|CB13|CTH13|CTA13/.test(model)) return false;
+    if (/400管距/.test(text) && !/300/.test(text)) return false;
+    return true;
+  }
+
+  return true;
+}
+
+function pipeWarningText(pipe) {
+  if (pipe === "unknown") return "管距未確認，出貨前需現場確認30/40cm。";
+  return `已依${pipe === "400" ? "40cm" : "30cm"}管距篩選。`;
+}
+
+
 function buildToiletSeatBundles() {
+  const selectedPipe = els.toiletPipe ? els.toiletPipe.value : "unknown";
+
   const toilets = products
     .filter((p) => p.visible !== false)
     .filter((p) => String(p.category || "") === "馬桶")
+    .filter((p) => supportsPipe(p, selectedPipe))
     .filter((p) => !String(p.model || "").includes("CF1354") && !String(p.model || "").includes("CF1454"))
     .filter((p) => Number(p.listPrice || 0) > 0);
 
@@ -384,6 +434,7 @@ function buildToiletSeatBundles() {
   const smartToilets = products
     .filter((p) => p.visible !== false)
     .filter((p) => String(p.category || "") === "智慧馬桶")
+    .filter((p) => supportsPipe(p, selectedPipe))
     .filter((p) => Number(p.listPrice || 0) > 0)
     .map((p) => ({
       ...p,
@@ -415,7 +466,7 @@ function buildToiletSeatBundles() {
         sort,
         imageUrl: toilet.imageUrl || seat.imageUrl || "",
         officialUrl: toilet.officialUrl || seat.officialUrl || "",
-        notes: `動態組合：${toilet.model} + ${seat.model}`,
+        notes: `動態組合：${toilet.model} + ${seat.model}；${pipeWarningText(selectedPipe)}`,
         source: `${toilet.source || ""}; ${seat.source || ""}`,
         isDynamicCombo: true,
         sourceType: "馬桶+便座"
@@ -438,6 +489,59 @@ function buildToiletSeatBundles() {
 
   return [...bundles, ...smartToilets, ...presetCombos];
 }
+
+
+function buildShowerSliderBundles() {
+  const showers = products
+    .filter((p) => p.visible !== false)
+    .filter((p) => String(p.category || "") === "沐浴龍頭")
+    .filter((p) => Number(p.listPrice || 0) > 0);
+
+  const sliders = products
+    .filter((p) => p.visible !== false)
+    .filter((p) => String(p.category || "") === "滑桿/蓮蓬頭")
+    .filter((p) => Number(p.listPrice || 0) > 0)
+    .filter((p) => /^WG/.test(String(p.model || "")));
+
+  const bundles = [];
+
+  showers.forEach((shower) => {
+    const hasBundledSlider = /WG\d+/i.test(String(shower.model || "")) || /含滑桿/.test(`${shower.name || ""}${shower.features || ""}${shower.notes || ""}`);
+    if (hasBundledSlider) {
+      bundles.push({
+        ...shower,
+        category: "沐浴龍頭滑桿方案",
+        isDynamicCombo: true,
+        sourceType: "沐浴龍頭含滑桿",
+        features: `沐浴龍頭含滑桿｜${shower.features || ""}`,
+        sort: Number(shower.sort || 9999)
+      });
+      return;
+    }
+
+    sliders.forEach((slider) => {
+      bundles.push({
+        ...shower,
+        model: `${shower.model} + ${slider.model}`,
+        name: `${shower.name} + ${slider.name}`,
+        category: "沐浴龍頭滑桿方案",
+        listPrice: Number(shower.listPrice || 0) + Number(slider.listPrice || 0),
+        size: `${shower.size || ""} / ${slider.size || ""}`.replace(/^ \/ | \/ $/g, ""),
+        features: `沐浴龍頭搭配滑桿｜${shower.features || ""}｜${slider.features || ""}`,
+        sort: Number(shower.sort || 9999) + Number(slider.sort || 9999),
+        imageUrl: shower.imageUrl || slider.imageUrl || "",
+        officialUrl: shower.officialUrl || slider.officialUrl || "",
+        notes: `動態組合：${shower.model} + ${slider.model}`,
+        source: `${shower.source || ""}; ${slider.source || ""}`,
+        isDynamicCombo: true,
+        sourceType: "沐浴龍頭+滑桿"
+      });
+    });
+  });
+
+  return bundles;
+}
+
 
 function findCandidates(demand, preferAccessible) {
   let candidates = demand.type === "mirror"
