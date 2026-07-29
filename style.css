@@ -29,3 +29,72 @@ button {
   user-select: none;
   -webkit-touch-callout: none;
 }
+
+
+/* v19: 品項數量橫排，附加勾選列放在下方 */
+.item-qty-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.item-qty-row > span {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.item-qty-row .stepper {
+  justify-self: end;
+}
+
+.item-sub-row {
+  margin-top: 6px;
+  margin-left: 0;
+  padding-left: 12px;
+  border-left: 3px solid rgba(120, 120, 120, 0.18);
+}
+
+.check-row.item-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pipe-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.2fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.pipe-row span {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.pipe-row select {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .item-qty-row {
+    grid-template-columns: minmax(96px, 1fr) auto;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .item-sub-row {
+    padding-left: 10px;
+  }
+
+  .pipe-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .pipe-row select {
+    min-height: 40px;
+  }
+}
