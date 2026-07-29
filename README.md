@@ -1,25 +1,16 @@
-# 凱撒衛浴選品試算工具 MVP
+# 凱撒衛浴選品試算工具 MVP v2
 
-## 檔案
-- `index.html`：頁面結構
-- `style.css`：樣式
-- `app.js`：讀取 Google Sheet CSV、篩選產品、試算金額
+## 本版新增
+- 展開其他可選型號後，可按「改選此品項」
+- 改選後會置換主品項
+- 總價、小計、預算差額會同步重算
+- 展開品項也支援圖片縮圖
 
-## 資料來源
-目前 `app.js` 內的 `PRODUCT_CSV_URL` 已設定為你提供的 Google Sheet CSV 發布網址。
+## 圖片說明
+目前 Google Sheet 的 `圖片URL` 欄位若空白，頁面會顯示「無圖片」。
 
-## GitHub Pages 使用方式
-1. 建立 GitHub repository，例如 `caesar-product-selector`
-2. 上傳這三個檔案到 repository 根目錄
-3. 到 Settings → Pages
-4. Source 選 Deploy from a branch
-5. Branch 選 `main`，資料夾選 `/root`
-6. 儲存後等待 GitHub 產生 Pages 網址
+要顯示圖片，請在 `PRODUCT_MASTER` 的 `圖片URL` 欄填入圖片直連網址。
+建議只使用公開可讀的 https 圖片網址。
 
-## 注意
-本工具為第一版 MVP：
-- 圖片URL 空白時會顯示「無圖片」
-- 官網URL 空白時會依型號自動產生
-- 型號包含 `/`、空白或 `DF140EV` 時，會改用 Google 搜尋
-- 目前沒有登入權限控管
-- 目前沒有正式報價單功能
+## 更新方式
+把本包的 `index.html`、`style.css`、`app.js`、`README.md` 覆蓋 GitHub repository 根目錄內的同名檔案即可。

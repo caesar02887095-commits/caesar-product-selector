@@ -1,6 +1,7 @@
 const PRODUCT_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTntfwmNxwhqWVrPsU4sxhBHfDmvDOMSjjBXySgpOeaZLxdT7lsX6RfjrPgZbiV0N9QXSN_xRy5nWjD/pub?gid=0&single=true&output=csv";
 
 let products = [];
+let selectedModelByDemandId = new Map();
 
 const els = {
   status: document.getElementById("statusText"),
@@ -38,7 +39,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => addDemandRow(btn.dataset.addRow));
   });
 
-  els.runButton.addEventListener("click", renderEstimate);
+  els.runButton.addEventListener("click", () => {
+    selectedModelByDemandId.clear();
+    renderEstimate();
+  });
 
   await loadProducts();
 });
@@ -98,14 +102,14 @@ function renderEstimate() {
   const budget = parseNumber(els.budget.value);
   const preferAccessible = els.accessible.checked;
   const demands = buildDemands();
-  const selected = [];
-
-  for (const demand of demands) {
+  const selected = demands.map((demand) => {
     const candidates = findCandidates(demand, preferAccessible);
-    const primary = candidates[0];
-    if (primary) selected.push({ ...primary, demand, candidates });
-    else selected.push({ missing: true, demand, candidates: [] });
-  }
+    const savedModel = selectedModelByDemandId.get(demand.id);
+    const chosen = candidates.find((p) => p.model === savedModel) || candidates[0];
+
+    if (chosen) return { ...chosen, demand, candidates };
+    return { missing: true, demand, candidates: [] };
+  });
 
   drawResults(selected, discount, budget);
 }
@@ -114,24 +118,24 @@ function buildDemands() {
   const demands = [];
 
   const toiletQty = parseNumber(els.toiletQty.value);
-  if (toiletQty > 0) demands.push({ type: "toilet", label: "馬桶", qty: toiletQty });
+  if (toiletQty > 0) demands.push({ id: "toilet", type: "toilet", label: "馬桶", qty: toiletQty });
 
   getDemandRows(els.vanityRows).forEach((item, index) => {
-    if (item.qty > 0) demands.push({ type: "vanity", label: `浴櫃/臉盆組 ${index + 1}`, qty: item.qty, width: item.width });
+    if (item.qty > 0) demands.push({ id: `vanity-${index}-${item.width || 0}`, type: "vanity", label: `浴櫃/臉盆組 ${index + 1}`, qty: item.qty, width: item.width });
   });
 
   getDemandRows(els.mirrorRows).forEach((item, index) => {
-    if (item.qty > 0) demands.push({ type: "mirror", label: `鏡櫃/鏡子 ${index + 1}`, qty: item.qty, width: item.width });
+    if (item.qty > 0) demands.push({ id: `mirror-${index}-${item.width || 0}`, type: "mirror", label: `鏡櫃/鏡子 ${index + 1}`, qty: item.qty, width: item.width });
   });
 
   const basinQty = parseNumber(els.basinFaucetQty.value);
-  if (basinQty > 0) demands.push({ type: "basinFaucet", label: "面盆龍頭", qty: basinQty });
+  if (basinQty > 0) demands.push({ id: "basinFaucet", type: "basinFaucet", label: "面盆龍頭", qty: basinQty });
 
   const showerQty = parseNumber(els.showerFaucetQty.value);
-  if (showerQty > 0) demands.push({ type: "showerFaucet", label: "沐浴龍頭", qty: showerQty });
+  if (showerQty > 0) demands.push({ id: "showerFaucet", type: "showerFaucet", label: "沐浴龍頭", qty: showerQty });
 
   const grabQty = parseNumber(els.grabBarQty.value);
-  if (grabQty > 0) demands.push({ type: "grabBar", label: "扶手 / 無障礙配件", qty: grabQty, requireAccessible: true });
+  if (grabQty > 0) demands.push({ id: "grabBar", type: "grabBar", label: "扶手 / 無障礙配件", qty: grabQty, requireAccessible: true });
 
   return demands;
 }
@@ -210,7 +214,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
   const officialUrl = product.officialUrl || buildCaesarProductUrl(product.model);
   const imageContent = product.imageUrl
     ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.model)}" loading="lazy">`
-    : `<span>無圖片</span>`;
+    : `<span>無圖片<br>可補圖片URL</span>`;
 
   const card = document.createElement("article");
   card.className = "product-card";
@@ -237,6 +241,14 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
 
   const toggle = card.querySelector(".alt-toggle");
   if (toggle) toggle.addEventListener("click", () => card.querySelector(".alt-list").classList.toggle("is-open"));
+
+  card.querySelectorAll(".choose-alt").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedModelByDemandId.set(btn.dataset.demandId, btn.dataset.model);
+      renderEstimate();
+    });
+  });
+
   return card;
 }
 
@@ -252,17 +264,23 @@ function buildAltSection(product, qty, discount) {
     const diffText = diff >= 0 ? `+${money(diff)}` : `-${money(Math.abs(diff))}`;
     const url = alt.officialUrl || buildCaesarProductUrl(alt.model);
 
+    const thumb = alt.imageUrl
+      ? `<img src="${escapeAttr(alt.imageUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy">`
+      : `<span>無圖</span>`;
+
     return `
       <div class="alt-item">
-        <div>
+        <a class="alt-thumb" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">${thumb}</a>
+        <div class="alt-info">
           <strong>${escapeHtml(alt.model)}</strong>
           <div>${escapeHtml(alt.name)}</div>
           <small>${escapeHtml(alt.features || "")}</small>
         </div>
-        <div>
+        <div class="alt-action">
           <div>${money(altDiscounted)} / 件</div>
           <div>差額 ${diffText}</div>
           <a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">官網</a>
+          <button class="choose-alt" type="button" data-demand-id="${escapeAttr(product.demand.id)}" data-model="${escapeAttr(alt.model)}">改選此品項</button>
         </div>
       </div>
     `;
