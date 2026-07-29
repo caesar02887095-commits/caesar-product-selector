@@ -29,7 +29,7 @@ const els = {
 };
 
 const CATEGORY_MAP = {
-  toiletCombo: ["馬桶組合"],
+  toiletCombo: ["馬桶組合", "智慧馬桶"],
   toilet: ["馬桶", "智慧馬桶"],
   vanity: ["浴櫃/臉盆組", "臉盆浴櫃組", "浴櫃", "臉盆"],
   mirror: ["鏡櫃", "鏡子", "鏡子/鏡櫃", "開放櫃"],
@@ -47,7 +47,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   addDemandRow("vanity", { qty: 1, width: 800 });
   addDemandRow("mirror", { qty: 1, width: 800 });
 
-  document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => addDemandRow(btn.dataset.addRow)));
+  document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => {
+    addDemandRow(btn.dataset.addRow);
+    markDirty();
+  }));
 
   els.runButton.addEventListener("click", () => {
     selectedModelByDemandId.clear();
@@ -66,7 +69,7 @@ document.querySelectorAll(".stepper").forEach((stepper) => {
     const current = Number(input.value || 0);
     const next = Math.max(min, Math.min(max, current + delta));
     input.value = String(next);
-    renderEstimate();
+    markDirty();
   };
 
   minus.addEventListener("click", () => changeValue(-1));
@@ -75,7 +78,7 @@ document.querySelectorAll(".stepper").forEach((stepper) => {
 
 
 if (els.includeBidetSeat) {
-  els.includeBidetSeat.addEventListener("change", renderEstimate);
+  els.includeBidetSeat.addEventListener("change", markDirty);
 }
 
 loadProducts();
@@ -120,12 +123,28 @@ function addDemandRow(type, defaults = {}) {
   const row = fragment.querySelector(".demand-row");
   row.querySelector(".qty").value = defaults.qty ?? 1;
   row.querySelector(".width").value = defaults.width ?? "";
-  row.querySelector(".remove-row").addEventListener("click", () => row.remove());
+  row.querySelector(".remove-row").addEventListener("click", () => {
+    row.remove();
+    markDirty();
+  });
   if (type === "vanity") els.vanityRows.appendChild(fragment);
   if (type === "mirror") els.mirrorRows.appendChild(fragment);
 }
 
+
+let hasGeneratedOnce = false;
+
+function markDirty() {
+  const resultList = document.getElementById("resultList");
+  if (hasGeneratedOnce) {
+    setStatus("資料已變更，請按「產生選品」更新右側結果。");
+  } else {
+    setStatus("設定完成後，請按「產生選品」。");
+  }
+}
+
 function renderEstimate() {
+  hasGeneratedOnce = true;
   if (!products.length) {
     setStatus("尚未載入產品資料。");
     return;
@@ -296,7 +315,7 @@ function buildDemands() {
     demands.push({
       id: withBidetSeat ? "toiletCombo" : "toilet",
       type: withBidetSeat ? "toiletCombo" : "toilet",
-      label: withBidetSeat ? "馬桶 + 電腦馬桶蓋" : "馬桶",
+      label: withBidetSeat ? "電腦馬桶蓋方案" : "馬桶",
       qty: toiletQty
     });
   }
@@ -499,7 +518,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
   card.querySelectorAll(".choose-alt").forEach((btn) => {
     btn.addEventListener("click", () => {
       selectedModelByDemandId.set(btn.dataset.demandId, btn.dataset.productKey);
-      renderEstimate();
+      markDirty();
     });
   });
 
@@ -651,3 +670,5 @@ function escapeHtml(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
 function escapeAttr(value) { return escapeHtml(value); }
+
+
