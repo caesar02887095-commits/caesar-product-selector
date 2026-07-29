@@ -24,20 +24,18 @@ const els = {
 
 const CATEGORY_MAP = {
   toilet: ["馬桶", "智慧馬桶"],
-  vanity: ["浴櫃/臉盆組", "臉盆浴櫃組"],
-  mirror: ["鏡櫃", "鏡子", "鏡子/鏡櫃"],
+  vanity: ["浴櫃/臉盆組", "臉盆浴櫃組", "浴櫃", "臉盆"],
+  mirror: ["鏡櫃", "鏡子", "鏡子/鏡櫃", "開放櫃"],
   basinFaucet: ["面盆龍頭", "臉盆龍頭"],
   showerFaucet: ["沐浴龍頭", "浴用龍頭"],
   grabBar: ["扶手", "無障礙", "無障礙/扶手"]
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
-  addDemandRow("vanity", { qty: 1, width: 600 });
-  addDemandRow("mirror", { qty: 1, width: 600 });
+  addDemandRow("vanity", { qty: 1, width: 800 });
+  addDemandRow("mirror", { qty: 1, width: 800 });
 
-  document.querySelectorAll("[data-add-row]").forEach((btn) => {
-    btn.addEventListener("click", () => addDemandRow(btn.dataset.addRow));
-  });
+  document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => addDemandRow(btn.dataset.addRow)));
 
   els.runButton.addEventListener("click", () => {
     selectedModelByDemandId.clear();
@@ -87,7 +85,6 @@ function addDemandRow(type, defaults = {}) {
   row.querySelector(".qty").value = defaults.qty ?? 1;
   row.querySelector(".width").value = defaults.width ?? "";
   row.querySelector(".remove-row").addEventListener("click", () => row.remove());
-
   if (type === "vanity") els.vanityRows.appendChild(fragment);
   if (type === "mirror") els.mirrorRows.appendChild(fragment);
 }
@@ -97,26 +94,21 @@ function renderEstimate() {
     setStatus("尚未載入產品資料。");
     return;
   }
-
   const discount = clamp(parseNumber(els.discount.value) || 35, 1, 100);
   const budget = parseNumber(els.budget.value);
   const preferAccessible = els.accessible.checked;
   const demands = buildDemands();
   const selected = demands.map((demand) => {
     const candidates = findCandidates(demand, preferAccessible);
-    const savedModel = selectedModelByDemandId.get(demand.id);
-    const chosen = candidates.find((p) => p.model === savedModel) || candidates[0];
-
-    if (chosen) return { ...chosen, demand, candidates };
-    return { missing: true, demand, candidates: [] };
+    const savedKey = selectedModelByDemandId.get(demand.id);
+    const chosen = candidates.find((p) => getProductKey(p) === savedKey) || candidates[0];
+    return chosen ? { ...chosen, demand, candidates } : { missing: true, demand, candidates: [] };
   });
-
   drawResults(selected, discount, budget);
 }
 
 function buildDemands() {
   const demands = [];
-
   const toiletQty = parseNumber(els.toiletQty.value);
   if (toiletQty > 0) demands.push({ id: "toilet", type: "toilet", label: "馬桶", qty: toiletQty });
 
@@ -148,12 +140,26 @@ function getDemandRows(container) {
 }
 
 function findCandidates(demand, preferAccessible) {
-  const categoryNames = CATEGORY_MAP[demand.type] || [];
-  let candidates = products.filter((p) => categoryNames.some((name) => p.category.includes(name) || name.includes(p.category)));
+  let candidates = demand.type === "mirror"
+    ? findMirrorCandidates(demand)
+    : findSimpleCandidates(demand);
 
   if (demand.requireAccessible) {
     candidates = candidates.filter((p) => p.accessible || p.category.includes("無障礙") || p.features.includes("無障礙"));
   }
+
+  return candidates.sort((a, b) => {
+    if (preferAccessible && a.accessible !== b.accessible) return a.accessible ? -1 : 1;
+    if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
+    if (a.isCombo !== b.isCombo) return a.isCombo ? 1 : -1;
+    if (a.sort !== b.sort) return a.sort - b.sort;
+    return a.listPrice - b.listPrice;
+  });
+}
+
+function findSimpleCandidates(demand) {
+  const categoryNames = CATEGORY_MAP[demand.type] || [];
+  let candidates = products.filter((p) => categoryNames.some((name) => p.category.includes(name) || name.includes(p.category)));
 
   if (demand.width) {
     const exactOrNear = candidates
@@ -161,13 +167,61 @@ function findCandidates(demand, preferAccessible) {
       .filter((p) => p.width && p.widthDelta <= 100);
     if (exactOrNear.length) candidates = exactOrNear;
   }
+  return candidates;
+}
 
-  return candidates.sort((a, b) => {
-    if (preferAccessible && a.accessible !== b.accessible) return a.accessible ? -1 : 1;
-    if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
-    if (a.sort !== b.sort) return a.sort - b.sort;
-    return a.listPrice - b.listPrice;
-  });
+function findMirrorCandidates(demand) {
+  const mirrorProducts = products.filter((p) => isMirrorMain(p));
+  const openCabinets = products.filter((p) => isOpenCabinet(p));
+  let candidates = [];
+
+  for (const p of mirrorProducts) {
+    candidates.push({ ...p, widthDelta: demand.width ? Math.abs((p.width || 0) - demand.width) : 9999 });
+  }
+
+  for (const mirror of mirrorProducts) {
+    for (const cabinet of openCabinets) {
+      if (!mirror.width || !cabinet.width) continue;
+      const comboWidth = mirror.width + cabinet.width;
+      candidates.push({
+        visible: true,
+        category: "組合鏡櫃",
+        model: `${mirror.model} + ${cabinet.model}`,
+        name: `${mirror.name} + ${cabinet.name}`,
+        listPrice: mirror.listPrice + cabinet.listPrice,
+        width: comboWidth,
+        size: `${mirror.size} / ${cabinet.size}`,
+        features: `組合寬度 ${comboWidth}mm。${mirror.features}；${cabinet.features}`,
+        accessible: mirror.accessible || cabinet.accessible,
+        sort: Math.min(mirror.sort, cabinet.sort) + 0.5,
+        imageUrl: mirror.imageUrl || cabinet.imageUrl,
+        officialUrl: mirror.officialUrl || cabinet.officialUrl,
+        note: "鏡櫃組合",
+        source: `${mirror.source} / ${cabinet.source}`,
+        isCombo: true,
+        parts: [mirror, cabinet],
+        widthDelta: demand.width ? Math.abs(comboWidth - demand.width) : 9999
+      });
+    }
+  }
+
+  if (demand.width) {
+    const near = candidates.filter((p) => p.width && p.widthDelta <= 100);
+    if (near.length) candidates = near;
+  }
+
+  return candidates;
+}
+
+function isMirrorMain(p) {
+  const text = `${p.category} ${p.model} ${p.name} ${p.features}`;
+  if (isOpenCabinet(p)) return false;
+  return text.includes("鏡櫃") || text.includes("鏡子") || /^EM\d/i.test(p.model);
+}
+
+function isOpenCabinet(p) {
+  const text = `${p.category} ${p.model} ${p.name} ${p.features}`;
+  return text.includes("開放櫃") || /^EM00(20|25)/i.test(p.model);
 }
 
 function drawResults(selected, discount, budget) {
@@ -185,13 +239,7 @@ function drawResults(selected, discount, budget) {
     if (item.missing) {
       const block = document.createElement("div");
       block.className = "product-card";
-      block.innerHTML = `
-        <div class="product-img">無資料</div>
-        <div>
-          <p class="model">${escapeHtml(item.demand.label)}</p>
-          <p class="name">找不到符合條件的產品，請檢查類別、寬度或 PRODUCT_MASTER 是否顯示。</p>
-        </div>
-      `;
+      block.innerHTML = `<div class="product-img">無資料</div><div><p class="model">${escapeHtml(item.demand.label)}</p><p class="name">找不到符合條件的產品。</p></div>`;
       els.resultList.appendChild(block);
       continue;
     }
@@ -200,10 +248,8 @@ function drawResults(selected, discount, budget) {
     const discountedUnit = Math.round(item.listPrice * discount / 100);
     const subtotalList = item.listPrice * qty;
     const subtotalDiscounted = discountedUnit * qty;
-
     totalList += subtotalList;
     totalDiscounted += subtotalDiscounted;
-
     els.resultList.appendChild(createProductCard(item, qty, discount, discountedUnit, subtotalDiscounted));
   }
 
@@ -212,9 +258,8 @@ function drawResults(selected, discount, budget) {
 
 function createProductCard(product, qty, discount, discountedUnit, subtotalDiscounted) {
   const officialUrl = product.officialUrl || buildCaesarProductUrl(product.model);
-  const imageContent = product.imageUrl
-    ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.model)}" loading="lazy">`
-    : `<span>無圖片<br>可補圖片URL</span>`;
+  const imageContent = product.imageUrl ? `<img src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.model)}" loading="lazy">` : `<span>無圖片<br>可補圖片URL</span>`;
+  const comboBadge = product.isCombo ? `<span class="combo-badge">組合品項</span>` : "";
 
   const card = document.createElement("article");
   card.className = "product-card";
@@ -225,6 +270,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
         <div>
           <p class="model">${escapeHtml(product.model)}</p>
           <p class="name">${escapeHtml(product.name)}</p>
+          ${comboBadge}
         </div>
         <a class="open-link" href="${escapeAttr(officialUrl)}" target="_blank" rel="noopener noreferrer">進入官網</a>
       </div>
@@ -244,7 +290,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
 
   card.querySelectorAll(".choose-alt").forEach((btn) => {
     btn.addEventListener("click", () => {
-      selectedModelByDemandId.set(btn.dataset.demandId, btn.dataset.model);
+      selectedModelByDemandId.set(btn.dataset.demandId, btn.dataset.productKey);
       renderEstimate();
     });
   });
@@ -253,20 +299,18 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
 }
 
 function buildAltSection(product, qty, discount) {
-  const candidates = product.candidates || [];
-  const alternatives = candidates.filter((p) => p.model !== product.model).slice(0, 8);
+  const alternatives = (product.candidates || []).filter((p) => getProductKey(p) !== getProductKey(product)).slice(0, 10);
   if (!alternatives.length) return "";
 
   const currentDiscounted = Math.round(product.listPrice * discount / 100);
+
   const items = alternatives.map((alt) => {
     const altDiscounted = Math.round(alt.listPrice * discount / 100);
     const diff = (altDiscounted - currentDiscounted) * qty;
     const diffText = diff >= 0 ? `+${money(diff)}` : `-${money(Math.abs(diff))}`;
     const url = alt.officialUrl || buildCaesarProductUrl(alt.model);
-
-    const thumb = alt.imageUrl
-      ? `<img src="${escapeAttr(alt.imageUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy">`
-      : `<span>無圖</span>`;
+    const thumb = alt.imageUrl ? `<img src="${escapeAttr(alt.imageUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy">` : `<span>無圖</span>`;
+    const combo = alt.isCombo ? `<small>組合寬度：${alt.width}mm</small>` : `<small>${escapeHtml(alt.features || "")}</small>`;
 
     return `
       <div class="alt-item">
@@ -274,13 +318,12 @@ function buildAltSection(product, qty, discount) {
         <div class="alt-info">
           <strong>${escapeHtml(alt.model)}</strong>
           <div>${escapeHtml(alt.name)}</div>
-          <small>${escapeHtml(alt.features || "")}</small>
+          ${combo}
         </div>
         <div class="alt-action">
           <div>${money(altDiscounted)} / 件</div>
           <div>差額 ${diffText}</div>
-          <a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">官網</a>
-          <button class="choose-alt" type="button" data-demand-id="${escapeAttr(product.demand.id)}" data-model="${escapeAttr(alt.model)}">改選此品項</button>
+          <button class="choose-alt" type="button" data-demand-id="${escapeAttr(product.demand.id)}" data-product-key="${escapeAttr(getProductKey(alt))}">改選此品項</button>
         </div>
       </div>
     `;
@@ -292,25 +335,33 @@ function buildAltSection(product, qty, discount) {
 function updateSummary(totalList, totalDiscounted, budget) {
   els.totalListPrice.textContent = money(totalList);
   els.totalDiscountedPrice.textContent = money(totalDiscounted);
+  els.budgetDiff.classList.remove("positive", "negative", "neutral");
 
   if (!budget) {
     els.budgetDiff.textContent = "未填預算";
+    els.budgetDiff.classList.add("neutral");
     return;
   }
 
   const diff = budget - totalDiscounted;
-  els.budgetDiff.textContent = diff >= 0 ? `剩餘 ${money(diff)}` : `超出 ${money(Math.abs(diff))}`;
+  if (diff >= 0) {
+    els.budgetDiff.textContent = `+${money(diff)}`;
+    els.budgetDiff.classList.add("positive");
+  } else {
+    els.budgetDiff.textContent = `-${money(Math.abs(diff))}`;
+    els.budgetDiff.classList.add("negative");
+  }
+}
+
+function getProductKey(product) {
+  return `${product.model}|${product.name}|${product.listPrice}`;
 }
 
 function buildCaesarProductUrl(model) {
   const value = String(model || "").trim().toUpperCase();
   if (!value) return "";
-
-  const useGoogleSearch = value.includes("/") || value.includes(" ") || value === "DF140EV";
-  if (useGoogleSearch) {
-    return "https://www.google.com/search?q=" + encodeURIComponent("凱撒衛浴 " + value);
-  }
-
+  const useGoogleSearch = value.includes("/") || value.includes(" ") || value.includes("+") || value === "DF140EV";
+  if (useGoogleSearch) return "https://www.google.com/search?q=" + encodeURIComponent("凱撒衛浴 " + value);
   return "https://www.caesar.com.tw/product/detail/" + encodeURIComponent(value);
 }
 
@@ -319,11 +370,9 @@ function parseCSV(text) {
   let current = [];
   let value = "";
   let inQuotes = false;
-
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
     const next = text[i + 1];
-
     if (char === '"' && inQuotes && next === '"') {
       value += '"';
       i++;
@@ -342,61 +391,32 @@ function parseCSV(text) {
       value += char;
     }
   }
-
   current.push(value);
   if (current.some((cell) => cell !== "")) rows.push(current);
-
   const headers = rows.shift() || [];
   return rows.map((row) => {
     const obj = {};
-    headers.forEach((header, index) => { obj[header] = row[index] ?? ""; });
+    headers.forEach((header, index) => obj[header] = row[index] ?? "");
     return obj;
   });
 }
 
-function parseMoney(value) {
-  return parseNumber(String(value || "").replace(/,/g, ""));
-}
-
+function parseMoney(value) { return parseNumber(String(value || "").replace(/,/g, "")); }
 function parseNumber(value) {
   const num = Number(String(value || "").replace(/,/g, "").trim());
   return Number.isFinite(num) ? num : 0;
 }
-
 function parseBool(value) {
   const text = String(value || "").trim().toUpperCase();
   return ["TRUE", "YES", "Y", "1", "是"].includes(text);
 }
-
-function clean(value) {
-  return String(value ?? "").trim();
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
+function clean(value) { return String(value ?? "").trim(); }
+function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
 function money(value) {
-  return new Intl.NumberFormat("zh-TW", {
-    style: "currency",
-    currency: "TWD",
-    maximumFractionDigits: 0
-  }).format(value || 0);
+  return new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 }).format(value || 0);
 }
-
-function setStatus(message) {
-  els.status.textContent = message;
-}
-
+function setStatus(message) { els.status.textContent = message; }
 function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
-
-function escapeAttr(value) {
-  return escapeHtml(value);
-}
+function escapeAttr(value) { return escapeHtml(value); }
