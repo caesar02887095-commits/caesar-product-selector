@@ -94,17 +94,146 @@ function renderEstimate() {
     setStatus("尚未載入產品資料。");
     return;
   }
+
   const discount = clamp(parseNumber(els.discount.value) || 35, 1, 100);
   const budget = parseNumber(els.budget.value);
   const preferAccessible = els.accessible.checked;
   const demands = buildDemands();
-  const selected = demands.map((demand) => {
+
+  const demandCandidates = demands.map((demand) => {
     const candidates = findCandidates(demand, preferAccessible);
+    return { demand, candidates };
+  });
+
+  const selected = budget > 0
+    ? selectBudgetAwareItems(demandCandidates, discount, budget)
+    : selectDefaultItems(demandCandidates);
+
+  drawResults(selected, discount, budget);
+}
+
+
+function selectDefaultItems(demandCandidates) {
+  return demandCandidates.map(({ demand, candidates }) => {
     const savedKey = selectedModelByDemandId.get(demand.id);
     const chosen = candidates.find((p) => getProductKey(p) === savedKey) || candidates[0];
     return chosen ? { ...chosen, demand, candidates } : { missing: true, demand, candidates: [] };
   });
-  drawResults(selected, discount, budget);
+}
+
+function selectBudgetAwareItems(demandCandidates, discount, budget) {
+  const prepared = demandCandidates.map(({ demand, candidates }) => ({
+    demand,
+    candidates: candidates
+      .filter((p) => p.listPrice > 0)
+      .map((p) => ({
+        ...p,
+        discountedUnit: Math.round(p.listPrice * discount / 100),
+        subtotal: Math.round(p.listPrice * discount / 100) * (demand.qty || 1)
+      }))
+      .sort((a, b) => {
+        if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
+        if (a.listPrice !== b.listPrice) return a.listPrice - b.listPrice;
+        return a.sort - b.sort;
+      })
+  }));
+
+  let selected = prepared.map(({ demand, candidates }) => {
+    const savedKey = selectedModelByDemandId.get(demand.id);
+    const chosen = candidates.find((p) => getProductKey(p) === savedKey) || candidates[0];
+    return chosen ? { ...chosen, demand, candidates } : { missing: true, demand, candidates: [] };
+  });
+
+  if (selected.some((item) => item.missing)) return selected;
+
+  let currentTotal = sumSelectedSubtotal(selected, discount);
+
+  // 如果最低價組合都已經超過預算，就保留最低價組合，不再升級。
+  if (currentTotal > budget) {
+    selected.forEach((item) => item.budgetReason = "最低可用");
+    return selected;
+  }
+
+  // 在不超出預算的情況下，逐步把品項升級到更好的推薦排序。
+  let upgraded = true;
+  while (upgraded) {
+    upgraded = false;
+    const currentKeys = new Set(selected.map(getProductKey));
+    const upgrades = [];
+
+    selected.forEach((currentItem, index) => {
+      const currentSubtotal = Math.round(currentItem.listPrice * discount / 100) * (currentItem.demand.qty || 1);
+      const candidates = currentItem.candidates || [];
+
+      for (const candidate of candidates) {
+        const candidateSubtotal = Math.round(candidate.listPrice * discount / 100) * (currentItem.demand.qty || 1);
+        const delta = candidateSubtotal - currentSubtotal;
+
+        if (delta <= 0) continue;
+        if (currentTotal + delta > budget) continue;
+
+        const qualityGain = scoreBudgetUpgrade(currentItem, candidate);
+        if (qualityGain <= 0) continue;
+
+        upgrades.push({
+          index,
+          candidate,
+          delta,
+          qualityGain,
+          efficiency: qualityGain / Math.max(delta, 1)
+        });
+      }
+    });
+
+    upgrades.sort((a, b) => {
+      if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
+      if (a.delta !== b.delta) return a.delta - b.delta;
+      return b.qualityGain - a.qualityGain;
+    });
+
+    const best = upgrades[0];
+    if (best) {
+      const demand = selected[best.index].demand;
+      const candidates = selected[best.index].candidates;
+      selected[best.index] = { ...best.candidate, demand, candidates, budgetReason: "預算內升級" };
+      currentTotal += best.delta;
+      upgraded = true;
+    }
+  }
+
+  selected.forEach((item) => {
+    if (!item.budgetReason) item.budgetReason = "預算內基礎";
+  });
+
+  return selected;
+}
+
+function scoreBudgetUpgrade(currentItem, candidate) {
+  let score = 0;
+
+  // 推薦排序越前面，視為越值得升級。
+  score += Math.max(0, (currentItem.sort || 9999) - (candidate.sort || 9999)) * 3;
+
+  // 無障礙需求優先。
+  if (!currentItem.accessible && candidate.accessible) score += 50;
+
+  // 更接近需求寬度，視為升級。
+  const currentDelta = currentItem.widthDelta ?? 9999;
+  const candidateDelta = candidate.widthDelta ?? 9999;
+  score += Math.max(0, currentDelta - candidateDelta) * 2;
+
+  // 同類型中較完整的組合品項加分，但不要過度。
+  if (!currentItem.isCombo && candidate.isCombo) score += 15;
+
+  return score;
+}
+
+function sumSelectedSubtotal(selected, discount) {
+  return selected.reduce((sum, item) => {
+    if (item.missing) return sum;
+    const qty = item.demand.qty || 1;
+    return sum + Math.round(item.listPrice * discount / 100) * qty;
+  }, 0);
 }
 
 function buildDemands() {
@@ -254,6 +383,11 @@ function drawResults(selected, discount, budget) {
   }
 
   updateSummary(totalList, totalDiscounted, budget);
+  if (budget) {
+    setStatus(totalDiscounted <= budget
+      ? `已依預算產生選品，折後總價控制在預算內。`
+      : `最低可用組合仍超出預算，請提高預算或減少數量。`);
+  }
 }
 
 function createProductCard(product, qty, discount, discountedUnit, subtotalDiscounted) {
@@ -273,7 +407,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
         <p class="model">${escapeHtml(product.model)}<span class="product-name-inline">${escapeHtml(product.name)}</span></p>
         ${comboBadge}
       </div>
-      <p class="tags">${escapeHtml(product.features || "未填特殊功能")}</p>
+      <p class="tags">${buildReasonText(product)}${escapeHtml(product.features || "未填特殊功能")}</p>
       <div class="price-grid">
         <div><span>定價</span><strong>${money(product.listPrice)}</strong></div>
         <div><span>折後單價</span><strong>${money(discountedUnit)}</strong></div>
@@ -332,6 +466,12 @@ function buildAltSection(product, qty, discount) {
   }).join("");
 
   return `<button class="alt-toggle" type="button">展開其他可選型號</button><div class="alt-list">${items}</div>`;
+}
+
+
+function buildReasonText(product) {
+  if (!product.budgetReason) return "";
+  return `【${escapeHtml(product.budgetReason)}】 `;
 }
 
 function updateSummary(totalList, totalDiscounted, budget) {
