@@ -129,101 +129,116 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
       .map((p) => ({
         ...p,
         discountedUnit: Math.round(p.listPrice * discount / 100),
-        subtotal: Math.round(p.listPrice * discount / 100) * (demand.qty || 1)
+        subtotal: Math.round(p.listPrice * discount / 100) * (demand.qty || 1),
+        budgetScore: scoreCandidateForBudget(p, demand)
       }))
       .sort((a, b) => {
         if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
-        if (a.listPrice !== b.listPrice) return a.listPrice - b.listPrice;
-        return a.sort - b.sort;
+        if (a.sort !== b.sort) return a.sort - b.sort;
+        return a.listPrice - b.listPrice;
       })
+      .slice(0, 35)
   }));
 
-  let selected = prepared.map(({ demand, candidates }) => {
-    const savedKey = selectedModelByDemandId.get(demand.id);
-    const chosen = candidates.find((p) => getProductKey(p) === savedKey) || candidates[0];
-    return chosen ? { ...chosen, demand, candidates } : { missing: true, demand, candidates: [] };
-  });
-
-  if (selected.some((item) => item.missing)) return selected;
-
-  let currentTotal = sumSelectedSubtotal(selected, discount);
-
-  // 如果最低價組合都已經超過預算，就保留最低價組合，不再升級。
-  if (currentTotal > budget) {
-    selected.forEach((item) => item.budgetReason = "最低可用");
-    return selected;
+  if (prepared.some((group) => !group.candidates.length)) {
+    return prepared.map(({ demand, candidates }) => ({
+      missing: true,
+      demand,
+      candidates
+    }));
   }
 
-  // 在不超出預算的情況下，逐步把品項升級到更好的推薦排序。
-  let upgraded = true;
-  while (upgraded) {
-    upgraded = false;
-    const currentKeys = new Set(selected.map(getProductKey));
-    const upgrades = [];
+  const minPossible = prepared.reduce((sum, group) => {
+    const minItem = group.candidates.reduce((best, item) => item.subtotal < best.subtotal ? item : best, group.candidates[0]);
+    return sum + minItem.subtotal;
+  }, 0);
 
-    selected.forEach((currentItem, index) => {
-      const currentSubtotal = Math.round(currentItem.listPrice * discount / 100) * (currentItem.demand.qty || 1);
-      const candidates = currentItem.candidates || [];
+  if (minPossible > budget) {
+    return prepared.map(({ demand, candidates }) => {
+      const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
+      return { ...cheapest, demand, candidates, budgetReason: "最低可用" };
+    });
+  }
 
-      for (const candidate of candidates) {
-        const candidateSubtotal = Math.round(candidate.listPrice * discount / 100) * (currentItem.demand.qty || 1);
-        const delta = candidateSubtotal - currentSubtotal;
+  // Multiple-choice knapsack:
+  // 每個需求選一個品項，找出不超過預算且總價最接近預算的組合。
+  let states = new Map();
+  states.set(0, { total: 0, score: 0, picks: [] });
 
-        if (delta <= 0) continue;
-        if (currentTotal + delta > budget) continue;
+  for (const group of prepared) {
+    const next = new Map();
 
-        const qualityGain = scoreBudgetUpgrade(currentItem, candidate);
-        if (qualityGain <= 0) continue;
+    for (const state of states.values()) {
+      for (const item of group.candidates) {
+        const total = state.total + item.subtotal;
+        if (total > budget) continue;
 
-        upgrades.push({
-          index,
-          candidate,
-          delta,
-          qualityGain,
-          efficiency: qualityGain / Math.max(delta, 1)
-        });
+        const score = state.score + item.budgetScore;
+        const existing = next.get(total);
+
+        if (!existing || score > existing.score) {
+          next.set(total, {
+            total,
+            score,
+            picks: [...state.picks, { ...item, demand: group.demand, candidates: group.candidates }]
+          });
+        }
       }
-    });
-
-    upgrades.sort((a, b) => {
-      if (b.efficiency !== a.efficiency) return b.efficiency - a.efficiency;
-      if (a.delta !== b.delta) return a.delta - b.delta;
-      return b.qualityGain - a.qualityGain;
-    });
-
-    const best = upgrades[0];
-    if (best) {
-      const demand = selected[best.index].demand;
-      const candidates = selected[best.index].candidates;
-      selected[best.index] = { ...best.candidate, demand, candidates, budgetReason: "預算內升級" };
-      currentTotal += best.delta;
-      upgraded = true;
     }
+
+    // 壓縮狀態，避免候選太多時變慢。
+    states = pruneBudgetStates(next, budget, 900);
   }
 
-  selected.forEach((item) => {
-    if (!item.budgetReason) item.budgetReason = "預算內基礎";
-  });
+  if (!states.size) {
+    return prepared.map(({ demand, candidates }) => {
+      const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
+      return { ...cheapest, demand, candidates, budgetReason: "最低可用" };
+    });
+  }
 
-  return selected;
+  const best = [...states.values()].sort((a, b) => {
+    const aGap = budget - a.total;
+    const bGap = budget - b.total;
+    if (aGap !== bGap) return aGap - bGap;
+    return b.score - a.score;
+  })[0];
+
+  return best.picks.map((item) => ({ ...item, budgetReason: "預算匹配" }));
 }
 
-function scoreBudgetUpgrade(currentItem, candidate) {
+function pruneBudgetStates(states, budget, limit) {
+  const list = [...states.values()].sort((a, b) => {
+    const aGap = budget - a.total;
+    const bGap = budget - b.total;
+    if (aGap !== bGap) return aGap - bGap;
+    return b.score - a.score;
+  });
+
+  const keep = new Map();
+
+  for (const state of list) {
+    if (!keep.has(state.total)) keep.set(state.total, state);
+    if (keep.size >= limit) break;
+  }
+
+  return keep;
+}
+
+function scoreCandidateForBudget(item, demand) {
   let score = 0;
 
-  // 推薦排序越前面，視為越值得升級。
-  score += Math.max(0, (currentItem.sort || 9999) - (candidate.sort || 9999)) * 3;
+  // 推薦排序仍保留，但不再凌駕於預算匹配。
+  score += Math.max(0, 10000 - (item.sort || 9999));
 
-  // 無障礙需求優先。
-  if (!currentItem.accessible && candidate.accessible) score += 50;
+  // 寬度越接近越好。
+  score += Math.max(0, 1000 - (item.widthDelta ?? 9999)) * 2;
 
-  // 更接近需求寬度，視為升級。
-  const currentDelta = currentItem.widthDelta ?? 9999;
-  const candidateDelta = candidate.widthDelta ?? 9999;
-  score += Math.max(0, currentDelta - candidateDelta) * 2;
+  // 無障礙需求加權。
+  if (demand.requireAccessible && item.accessible) score += 5000;
 
-  // 同類型中較完整的組合品項加分，但不要過度。
-  if (!currentItem.isCombo && candidate.isCombo) score += 15;
+  // 組合品項給小幅加分，讓鏡櫃組合有機會被選到。
+  if (item.isCombo || String(item.category || "").includes("組合")) score += 300;
 
   return score;
 }
@@ -235,6 +250,7 @@ function sumSelectedSubtotal(selected, discount) {
     return sum + Math.round(item.listPrice * discount / 100) * qty;
   }, 0);
 }
+
 
 function buildDemands() {
   const demands = [];
@@ -385,7 +401,7 @@ function drawResults(selected, discount, budget) {
   updateSummary(totalList, totalDiscounted, budget);
   if (budget) {
     setStatus(totalDiscounted <= budget
-      ? `已依預算產生選品，折後總價控制在預算內。`
+      ? `已依預算匹配選品，目標是讓折後總價盡量接近預算。`
       : `最低可用組合仍超出預算，請提高預算或減少數量。`);
   }
 }
