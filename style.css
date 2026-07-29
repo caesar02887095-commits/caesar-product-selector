@@ -98,3 +98,79 @@ button {
     min-height: 40px;
   }
 }
+
+
+/* v20: 修正 v19 數量列在窄版面超出外框 */
+.form-card,
+.input-card,
+.panel,
+.card,
+section {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.item-qty-row {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.item-qty-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.item-qty-row .stepper {
+  flex: 0 0 auto;
+  min-width: 112px;
+  max-width: 132px;
+}
+
+.stepper {
+  box-sizing: border-box;
+}
+
+.stepper input {
+  min-width: 0;
+}
+
+.item-sub-row,
+.pipe-row {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.pipe-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pipe-row select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .item-qty-row {
+    gap: 8px;
+  }
+
+  .item-qty-row .stepper {
+    min-width: 104px;
+    max-width: 118px;
+  }
+
+  .item-sub-row {
+    margin-left: 0;
+    padding-left: 8px;
+  }
+}
