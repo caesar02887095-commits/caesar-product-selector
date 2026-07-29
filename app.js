@@ -295,6 +295,11 @@ function scoreCandidateForBudget(item, demand) {
   // 組合品項給小幅加分，讓鏡櫃組合有機會被選到。
   if (item.isCombo || String(item.category || "").includes("組合")) score += 300;
 
+  // 勾選電腦馬桶蓋時，優先一般馬桶 + 溫水洗淨便座。
+  // 智慧馬桶仍可被選到，但不應該壓過合理的馬桶座組合。
+  if (item.sourceType === "馬桶+便座") score += 2500;
+  if (item.sourceType === "智慧馬桶") score -= 800;
+
   return score;
 }
 
@@ -315,7 +320,7 @@ function buildDemands() {
     demands.push({
       id: withBidetSeat ? "toiletCombo" : "toilet",
       type: withBidetSeat ? "toiletCombo" : "toilet",
-      label: withBidetSeat ? "電腦馬桶蓋方案" : "馬桶",
+      label: withBidetSeat ? "需要電腦馬桶蓋" : "馬桶",
       qty: toiletQty
     });
   }
@@ -360,6 +365,78 @@ function getDemandRows(container) {
     qty: parseNumber(row.querySelector(".qty").value),
     width: parseNumber(row.querySelector(".width").value)
   }));
+}
+
+
+function buildToiletSeatBundles() {
+  const toilets = products
+    .filter((p) => p.visible !== false)
+    .filter((p) => String(p.category || "") === "馬桶")
+    .filter((p) => !String(p.model || "").includes("CF1354") && !String(p.model || "").includes("CF1454"))
+    .filter((p) => Number(p.listPrice || 0) > 0);
+
+  const seats = products
+    .filter((p) => p.visible !== false)
+    .filter((p) => String(p.category || "") === "溫水洗淨便座")
+    .filter((p) => Number(p.listPrice || 0) > 0)
+    .filter((p) => !String(p.model || "").includes("TAF060"));
+
+  const smartToilets = products
+    .filter((p) => p.visible !== false)
+    .filter((p) => String(p.category || "") === "智慧馬桶")
+    .filter((p) => Number(p.listPrice || 0) > 0)
+    .map((p) => ({
+      ...p,
+      category: "電腦馬桶蓋方案",
+      isDynamicCombo: true,
+      sourceType: "智慧馬桶",
+      features: `智慧馬桶｜${p.features || ""}`,
+      sort: Number(p.sort || 9999) + 500
+    }));
+
+  const bundles = [];
+
+  toilets.forEach((toilet) => {
+    seats.forEach((seat) => {
+      const listPrice = Number(toilet.listPrice || 0) + Number(seat.listPrice || 0);
+      const width = Number(toilet.width || 0) || Number(seat.width || 0) || "";
+      const sort = Number(toilet.sort || 9999) + Number(seat.sort || 9999);
+
+      bundles.push({
+        ...toilet,
+        model: `${seat.model} + ${toilet.model}`,
+        name: `${toilet.name} + ${seat.name}`,
+        category: "電腦馬桶蓋方案",
+        listPrice,
+        width,
+        size: `${toilet.size || ""} / ${seat.size || ""}`.replace(/^ \/ | \/ $/g, ""),
+        features: `一般馬桶搭配溫水洗淨便座｜${toilet.features || ""}｜${seat.features || ""}`,
+        accessible: Boolean(toilet.accessible),
+        sort,
+        imageUrl: toilet.imageUrl || seat.imageUrl || "",
+        officialUrl: toilet.officialUrl || seat.officialUrl || "",
+        notes: `動態組合：${toilet.model} + ${seat.model}`,
+        source: `${toilet.source || ""}; ${seat.source || ""}`,
+        isDynamicCombo: true,
+        sourceType: "馬桶+便座"
+      });
+    });
+  });
+
+  // 保留少量預建組合，但排序放在動態組合後，避免過度依賴固定三組。
+  const presetCombos = products
+    .filter((p) => p.visible !== false)
+    .filter((p) => String(p.category || "") === "馬桶組合")
+    .map((p) => ({
+      ...p,
+      category: "電腦馬桶蓋方案",
+      isDynamicCombo: true,
+      sourceType: "預建組合",
+      features: `預建組合｜${p.features || ""}`,
+      sort: Number(p.sort || 9999) + 1000
+    }));
+
+  return [...bundles, ...smartToilets, ...presetCombos];
 }
 
 function findCandidates(demand, preferAccessible) {
