@@ -7,3 +7,25 @@
 .step-btn:active{transform:translateY(1px)}
 .sub-check{margin-top:4px;margin-bottom:4px;padding:6px 8px;border-radius:10px;background:#fafafa;border:1px solid var(--line)}
 @media(max-width:520px){.stepper{grid-template-columns:40px 52px 40px}.step-btn{min-height:40px}}
+
+
+/* v18: 手機版避免產品卡片、圖片與按鈕連點放大 */
+.product-card,
+.product-card *,
+.product-image,
+.image-box,
+.thumb,
+.alt-list,
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.product-image,
+.image-box,
+.thumb,
+.product-card img {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

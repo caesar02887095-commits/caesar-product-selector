@@ -91,6 +91,21 @@ if (els.includeShowerSlider) {
   els.includeShowerSlider.addEventListener("change", markDirty);
 }
 
+
+// 手機版避免產品卡片連點造成畫面放大或誤觸縮放。
+let lastTouchEndTime = 0;
+document.addEventListener("touchend", (event) => {
+  const target = event.target;
+  const inInteractiveProductArea = target && target.closest && target.closest(".product-card, .product-image, .image-box, .thumb, .alt-list, button");
+  if (!inInteractiveProductArea) return;
+
+  const now = Date.now();
+  if (now - lastTouchEndTime <= 320) {
+    event.preventDefault();
+  }
+  lastTouchEndTime = now;
+}, { passive: false });
+
 loadProducts();
 });
 
@@ -720,7 +735,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
   card.querySelectorAll(".choose-alt").forEach((btn) => {
     btn.addEventListener("click", () => {
       selectedModelByDemandId.set(btn.dataset.demandId, btn.dataset.productKey);
-      markDirty();
+      renderEstimate();
     });
   });
 
