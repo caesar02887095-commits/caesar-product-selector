@@ -10,6 +10,7 @@ const els = {
   budget: document.getElementById("budgetInput"),
   accessible: document.getElementById("accessibleInput"),
   toiletQty: document.getElementById("toiletQty"),
+  includeBidetSeat: document.getElementById("includeBidetSeat"),
   basinFaucetQty: document.getElementById("basinFaucetQty"),
   showerFaucetQty: document.getElementById("showerFaucetQty"),
   kitchenFaucetQty: document.getElementById("kitchenFaucetQty"),
@@ -28,6 +29,7 @@ const els = {
 };
 
 const CATEGORY_MAP = {
+  toiletCombo: ["馬桶組合"],
   toilet: ["馬桶", "智慧馬桶"],
   vanity: ["浴櫃/臉盆組", "臉盆浴櫃組", "浴櫃", "臉盆"],
   mirror: ["鏡櫃", "鏡子", "鏡子/鏡櫃", "開放櫃"],
@@ -52,7 +54,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderEstimate();
   });
 
-  await loadProducts();
+  await 
+document.querySelectorAll(".stepper").forEach((stepper) => {
+  const input = document.getElementById(stepper.dataset.target);
+  const minus = stepper.querySelector(".minus");
+  const plus = stepper.querySelector(".plus");
+
+  const changeValue = (delta) => {
+    const min = Number(input.min || 0);
+    const max = input.max ? Number(input.max) : Infinity;
+    const current = Number(input.value || 0);
+    const next = Math.max(min, Math.min(max, current + delta));
+    input.value = String(next);
+    renderEstimate();
+  };
+
+  minus.addEventListener("click", () => changeValue(-1));
+  plus.addEventListener("click", () => changeValue(1));
+});
+
+
+if (els.includeBidetSeat) {
+  els.includeBidetSeat.addEventListener("change", renderEstimate);
+}
+
+loadProducts();
 });
 
 async function loadProducts() {
@@ -265,7 +291,15 @@ function sumSelectedSubtotal(selected, discount) {
 function buildDemands() {
   const demands = [];
   const toiletQty = parseNumber(els.toiletQty.value);
-  if (toiletQty > 0) demands.push({ id: "toilet", type: "toilet", label: "馬桶", qty: toiletQty });
+  if (toiletQty > 0) {
+    const withBidetSeat = Boolean(els.includeBidetSeat && els.includeBidetSeat.checked);
+    demands.push({
+      id: withBidetSeat ? "toiletCombo" : "toilet",
+      type: withBidetSeat ? "toiletCombo" : "toilet",
+      label: withBidetSeat ? "馬桶 + 電腦馬桶蓋" : "馬桶",
+      qty: toiletQty
+    });
+  }
 
   getDemandRows(els.vanityRows).forEach((item, index) => {
     if (item.qty > 0) demands.push({ id: `vanity-${index}-${item.width || 0}`, type: "vanity", label: `浴櫃/臉盆組 ${index + 1}`, qty: item.qty, width: item.width });
