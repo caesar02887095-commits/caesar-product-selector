@@ -124,7 +124,8 @@ function normalizeProduct(row) {
     imageUrl: clean(row["圖片URL"]),
     officialUrl: clean(row["官網URL"]),
     note: clean(row["備註"]),
-    source: clean(row["來源頁"])
+    source: clean(row["來源頁"]),
+    pipeDistance: clean(row["糞管距離cm"])
   };
 }
 
@@ -387,9 +388,29 @@ function firstModelCode(item) {
 function supportsPipe(item, pipe) {
   if (!pipe || pipe === "unknown") return true;
 
+  const declaredPipe = String(item.pipeDistance || "").trim();
+
+  // 優先使用試算表的「糞管距離cm」欄位。
+  // 可填：300、400、300/400、300,400、30、40。
+  if (declaredPipe) {
+    const normalized = declaredPipe
+      .replace(/公分|cm|CM/g, "")
+      .replace(/30(?!0)/g, "300")
+      .replace(/40(?!0)/g, "400");
+
+    const pipeOptions = normalized
+      .split(/[\/,，、\s]+/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    if (pipe === "300") return pipeOptions.includes("300");
+    if (pipe === "400") return pipeOptions.includes("400");
+  }
+
+  // 資料未填時才使用型號備援判斷，避免完全沒資料時前端不能用。
   const model = String(item.model || "");
   const size = String(item.size || "");
-  const notes = String(item.notes || "");
+  const notes = String(item.notes || item.note || "");
   const text = `${model} ${size} ${notes}`;
 
   if (pipe === "400") {
