@@ -270,12 +270,8 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
     <a class="product-img" href="${escapeAttr(officialUrl)}" target="_blank" rel="noopener noreferrer">${imageContent}</a>
     <div class="product-main">
       <div class="product-title-row">
-        <div>
-          <p class="model">${escapeHtml(product.model)}</p>
-          <p class="name">${escapeHtml(product.name)}</p>
-          ${comboBadge}
-        </div>
-        <a class="open-link" href="${escapeAttr(officialUrl)}" target="_blank" rel="noopener noreferrer">進入官網</a>
+        <p class="model">${escapeHtml(product.model)}<span class="product-name-inline">${escapeHtml(product.name)}</span></p>
+        ${comboBadge}
       </div>
       <p class="tags">${escapeHtml(product.features || "未填特殊功能")}</p>
       <div class="price-grid">
