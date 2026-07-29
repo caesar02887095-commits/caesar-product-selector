@@ -258,10 +258,10 @@ function drawResults(selected, discount, budget) {
 
 function createProductCard(product, qty, discount, discountedUnit, subtotalDiscounted) {
   const officialUrl = product.officialUrl || buildCaesarProductUrl(product.model);
-  const previewUrl = product.imageUrl || buildWebpageThumbnailUrl(officialUrl);
+  const previewUrl = product.imageUrl;
   const imageContent = previewUrl
-    ? `<img src="${escapeAttr(previewUrl)}" alt="${escapeAttr(product.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span class="fallback-label" style="display:none;">官網預覽</span>`
-    : `<span class="fallback-label">官網預覽</span>`;
+    ? `<img src="${escapeAttr(previewUrl)}" alt="${escapeAttr(product.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span class="fallback-label" style="display:none;">圖片載入失敗<br>點此看官網</span>`
+    : `<span class="fallback-label">尚無圖片<br>點此看官網</span>`;
   const comboBadge = product.isCombo ? `<span class="combo-badge">組合品項</span>` : "";
 
   const card = document.createElement("article");
@@ -308,10 +308,10 @@ function buildAltSection(product, qty, discount) {
     const diff = (altDiscounted - currentDiscounted) * qty;
     const diffText = diff >= 0 ? `+${money(diff)}` : `-${money(Math.abs(diff))}`;
     const url = alt.officialUrl || buildCaesarProductUrl(alt.model);
-    const altPreviewUrl = alt.imageUrl || buildWebpageThumbnailUrl(url);
+    const altPreviewUrl = alt.imageUrl;
     const thumb = altPreviewUrl
-      ? `<img src="${escapeAttr(altPreviewUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none;">官網預覽</span>`
-      : `<span>官網預覽</span>`;
+      ? `<img src="${escapeAttr(altPreviewUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none;">無圖</span>`
+      : `<span>無圖</span>`;
     const combo = alt.isCombo ? `<small>組合寬度：${alt.width}mm</small>` : `<small>${escapeHtml(alt.features || "")}</small>`;
 
     return `
@@ -380,10 +380,6 @@ function buildCaesarProductUrl(model) {
   return "https://www.google.com/search?q=" + encodeURIComponent("凱撒衛浴 " + value);
 }
 
-function buildWebpageThumbnailUrl(pageUrl) {
-  if (!pageUrl || !pageUrl.startsWith("https://www.caesar.com.tw/")) return "";
-  return "https://image.thum.io/get/width/600/crop/600/noanimate/" + pageUrl;
-}
 
 function parseCSV(text) {
   const rows = [];
