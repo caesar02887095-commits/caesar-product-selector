@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>凱撒衛浴選品試算工具</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">CAESAR PRODUCT SELECTOR</p>
+      <h1>凱撒衛浴選品試算工具</h1>
+      <p class="sub">依產品主檔、折扣與需求數量，快速產生第一版選品與金額試算。</p>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel controls">
+      <h2>條件輸入</h2>
+
+      <div class="field-grid two">
+        <label>
+          <span>折扣</span>
+          <div class="inline-input">
+            <input id="discountInput" type="number" inputmode="decimal" min="1" max="100" value="35" />
+            <span>折</span>
+          </div>
+        </label>
+
+        <label>
+          <span>預算（選填）</span>
+          <div class="inline-input">
+            <span>NT$</span>
+            <input id="budgetInput" type="number" inputmode="numeric" min="0" placeholder="例如 80000" />
+          </div>
+        </label>
+      </div>
+
+      <label class="check-row">
+        <input id="accessibleInput" type="checkbox" />
+        <span>優先無障礙相關品項</span>
+      </label>
+
+      <div class="divider"></div>
+
+      <h3>基本品項</h3>
+      <div class="field-grid two">
+        <label>
+          <span>馬桶數量</span>
+          <input id="toiletQty" type="number" min="0" value="1" />
+        </label>
+        <label>
+          <span>面盆龍頭數量</span>
+          <input id="basinFaucetQty" type="number" min="0" value="1" />
+        </label>
+        <label>
+          <span>沐浴龍頭數量</span>
+          <input id="showerFaucetQty" type="number" min="0" value="1" />
+        </label>
+        <label>
+          <span>扶手 / 無障礙配件數量</span>
+          <input id="grabBarQty" type="number" min="0" value="0" />
+        </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3>浴櫃 / 臉盆組</h3>
+      <div id="vanityRows" class="repeat-list"></div>
+      <button class="ghost" type="button" data-add-row="vanity">＋新增浴櫃需求</button>
+
+      <h3>鏡櫃 / 鏡子</h3>
+      <div id="mirrorRows" class="repeat-list"></div>
+      <button class="ghost" type="button" data-add-row="mirror">＋新增鏡櫃需求</button>
+
+      <button id="runButton" class="primary" type="button">產生選品試算</button>
+      <p id="statusText" class="status">資料載入中。</p>
+    </section>
+
+    <section class="results">
+      <div class="summary-card">
+        <div>
+          <p class="eyebrow">ESTIMATE</p>
+          <h2>試算總覽</h2>
+        </div>
+        <div class="summary-values">
+          <div>
+            <span>總定價</span>
+            <strong id="totalListPrice">NT$0</strong>
+          </div>
+          <div>
+            <span>折後總價</span>
+            <strong id="totalDiscountedPrice">NT$0</strong>
+          </div>
+          <div>
+            <span>預算差額</span>
+            <strong id="budgetDiff">未填預算</strong>
+          </div>
+        </div>
+      </div>
+
+      <div id="resultList" class="result-list">
+        <div class="empty">輸入條件後按「產生選品試算」。</div>
+      </div>
+
+      <p class="note">
+        本頁為選品與金額試算工具，非正式報價。實際規格、庫存、供貨與安裝條件仍需另行確認。
+      </p>
+    </section>
+  </main>
+
+  <template id="demandRowTemplate">
+    <div class="demand-row">
+      <label>
+        <span>數量</span>
+        <input class="qty" type="number" min="0" value="1" />
+      </label>
+      <label>
+        <span>寬度 mm</span>
+        <input class="width" type="number" min="0" placeholder="例如 600" />
+      </label>
+      <button class="remove-row" type="button">刪除</button>
+    </div>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
