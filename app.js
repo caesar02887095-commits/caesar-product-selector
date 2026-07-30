@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301110";
+const APP_VERSION = "202607301125";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -1089,4 +1089,29 @@ function escapeHtml(value) {
 }
 function escapeAttr(value) { return escapeHtml(value); }
 
+
+
+
+// v30: 最小修正 stepper 加減按鈕。不得改動選品邏輯。
+document.addEventListener("click", (event) => {
+  const button = event.target && event.target.closest ? event.target.closest("button[data-step][data-target]") : null;
+  if (!button) return;
+
+  const input = document.getElementById(button.dataset.target);
+  if (!input) return;
+
+  event.preventDefault();
+
+  const step = Number(button.dataset.step || 0);
+  const current = Number(input.value || 0);
+  const nextValue = Math.max(0, current + step);
+  input.value = String(nextValue);
+
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+
+  if (typeof markDirty === "function") {
+    markDirty();
+  }
+}, true);
 
