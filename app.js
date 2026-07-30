@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301438";
+const APP_VERSION = "202607301500";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -106,9 +106,15 @@ const CATEGORY_MAP = {
   showerFaucet: ["沐浴龍頭", "浴用龍頭", "控溫沐浴龍頭組"],
   kitchenFaucet: ["廚房龍頭", "電漿滅菌廚房龍頭"],
   bathAccessory: ["浴室配件", "滑桿/蓮蓬頭"],
+  exhaustFan: ["抽風扇", "換氣扇", "排風扇"],
   towelWarmer: ["電熱毛巾架"],
-  bathHeater: ["浴室暖風乾燥機"],
+  bathHeater: ["浴室暖風乾燥機", "暖風機"],
+  clothesRack: ["電動曬衣架", "曬衣架"],
+  handDryer: ["烘手機"],
+  waterHeater: ["電能熱水器", "電熱水器", "熱水器"],
+  urinal: ["小便斗", "小便器", "小便斗沖水器", "感應器", "指壓"],
   bathtub: ["浴缸"],
+  showerDoor: ["淋浴拉門", "無框淋浴拉門", "乾濕分離", "淋浴門"],
   grabBar: ["扶手", "無障礙", "無障礙/扶手"]
 };
 
@@ -451,7 +457,7 @@ function buildDemands() {
   addQtyDemand("shelfQty", "bathAccessory", "置物架");
   addQtyDemand("hookQty", "bathAccessory", "掛衣勾");
 
-  addQtyDemand("exhaustFanQty", "bathHeater", "抽風扇");
+  addQtyDemand("exhaustFanQty", "exhaustFan", "抽風扇");
   addQtyDemand("bathHeaterQty", "bathHeater", "浴室暖風機");
   addQtyDemand("towelWarmerQty", "towelWarmer", "電熱毛巾架");
   addQtyDemand("electricClothesRackQty", "clothesRack", "電動曬衣架");
@@ -710,7 +716,15 @@ function findCandidates(demand, preferAccessible) {
 
 function findSimpleCandidates(demand) {
   const categoryNames = CATEGORY_MAP[demand.type] || [];
-  let candidates = products.filter((p) => categoryNames.some((name) => p.category.includes(name) || name.includes(p.category)));
+  if (!categoryNames.length) {
+    console.warn("找不到需求類別對應：", demand.type, demand.label);
+    return [];
+  }
+
+  let candidates = products.filter((p) => {
+    const category = String(p.category || "");
+    return categoryNames.some((name) => category.includes(name) || name.includes(category));
+  });
 
   if (demand.width) {
     const exactOrNear = candidates
@@ -789,8 +803,16 @@ function drawResults(selected, discount, budget) {
   for (const item of selected) {
     if (item.missing) {
       const block = document.createElement("div");
-      block.className = "product-card";
-      block.innerHTML = `<div class="product-img">無資料</div><div><p class="model">${escapeHtml(item.demand.label)}</p><p class="name">找不到符合條件的產品。</p></div>`;
+      block.className = "product-card missing-card";
+      block.innerHTML = `
+        <div class="product-img missing-img">無資料</div>
+        <div class="product-main">
+          <div class="product-title-row">
+            <p class="model">${escapeHtml(item.demand.label)}</p>
+          </div>
+          <p class="tags">目前產品資料表沒有找到可對應的類別或品項。請先補 PRODUCT_MASTER 類別，或調整 CATEGORY_MAP。</p>
+        </div>
+      `;
       els.resultList.appendChild(block);
       continue;
     }

@@ -1212,3 +1212,16 @@ button:active,
     max-width: 100%;
   }
 }
+
+
+/* v39-hotfix-category-map: 缺資料卡片穩定顯示 */
+.missing-card .missing-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.035);
+  font-size: 13px;
+  opacity: 0.72;
+}
