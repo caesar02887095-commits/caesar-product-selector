@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301125";
+const APP_VERSION = "202607301136";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -1112,6 +1112,33 @@ document.addEventListener("click", (event) => {
 
   if (typeof markDirty === "function") {
     markDirty();
+  }
+}, true);
+
+
+
+// v31: 最小修正「產生選品試算」按鈕無動作。
+// 不改選品邏輯，只確保按鈕點擊會呼叫既有 renderEstimate()。
+document.addEventListener("click", (event) => {
+  const button = event.target && event.target.closest ? event.target.closest("button") : null;
+  if (!button) return;
+
+  const text = (button.textContent || "").replace(/\s+/g, "");
+  const isGenerateButton =
+    text.includes("產生選品試算") ||
+    text.includes("產生選品") ||
+    button.id === "generateBtn" ||
+    button.id === "estimateBtn" ||
+    button.id === "calculateBtn";
+
+  if (!isGenerateButton) return;
+
+  event.preventDefault();
+
+  if (typeof renderEstimate === "function") {
+    renderEstimate();
+  } else {
+    console.error("renderEstimate is not defined");
   }
 }, true);
 

@@ -1,22 +1,17 @@
-# 凱撒衛浴選品試算工具 MVP v30
+# 凱撒衛浴選品試算工具 MVP v31
 
 ## 本版修正
-只修正 v29 加減按鈕不能按的問題。
+只修正「產生選品試算」按鈕沒有動作。
 
 ## 修正範圍
-- 新增一個穩定的 stepper click handler。
-- 依照 button 的 data-target 找到對應 input。
-- 依照 data-step 做 +1 / -1。
-- 數量最低為 0。
-- 觸發 input / change 事件。
-- 呼叫 markDirty。
-
-## 未改動
-- 未改版面。
-- 未改選品邏輯。
-- 未改資料分類。
-- 未改 PRODUCT_MASTER。
-- 未新增功能。
+- 新增一個最小 click handler。
+- 只攔截文字包含「產生選品試算」或「產生選品」的按鈕。
+- 點擊後呼叫既有 renderEstimate()。
+- 不改 renderEstimate 內容。
+- 不改 buildDemands。
+- 不改選品規則。
+- 不改 UI。
+- 不改 Google Sheet。
 
 ## 檔名規則
 固定四檔：
@@ -26,5 +21,5 @@
 - README.md
 
 快取用 query string：
-- style.css?v=202607301125
-- app.js?v=202607301125
+- style.css?v=202607301136
+- app.js?v=202607301136
