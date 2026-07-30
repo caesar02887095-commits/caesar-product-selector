@@ -1017,3 +1017,17 @@ button:active,
 .step-btn:active {
   transform: none !important;
 }
+
+
+/* v34: 改選區域穩定顯示，避免改選後整塊替代區消失造成跳動 */
+.alternatives,
+.alt-list,
+.product-alternatives {
+  min-height: 42px;
+}
+
+.alternatives button,
+.alt-list button,
+.product-alternatives button {
+  white-space: nowrap;
+}

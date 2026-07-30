@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301309";
+const APP_VERSION = "202607301337";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -1032,4 +1032,53 @@ document.addEventListener("DOMContentLoaded", () => {
     if (typeof setStatus === "function") setStatus("初始化失敗，請檢查瀏覽器主控台。");
   }
 });
+
+
+
+// v34: 修正改選品項後按鈕消失/不更新預算。
+// 使用事件委派，讓新渲染出來的替代品按鈕也永遠有效。
+document.addEventListener("click", (event) => {
+  const button = event.target && event.target.closest
+    ? event.target.closest("[data-alt-demand-id][data-alt-key]")
+    : null;
+
+  if (!button) return;
+
+  event.preventDefault();
+
+  const demandId = button.getAttribute("data-alt-demand-id");
+  const productKey = button.getAttribute("data-alt-key");
+
+  if (!demandId || !productKey) return;
+
+  selectedModelByDemandId.set(demandId, productKey);
+
+  if (typeof renderEstimate === "function") {
+    renderEstimate();
+  }
+}, true);
+
+
+
+// v34 fallback：支援舊版替代品按鈕資料格式。
+document.addEventListener("click", (event) => {
+  const button = event.target && event.target.closest
+    ? event.target.closest("button[data-demand-id][data-model], button[data-demand-id][data-product-key]")
+    : null;
+
+  if (!button) return;
+
+  const text = (button.textContent || "").replace(/\s+/g, "");
+  if (!text.includes("改選")) return;
+
+  event.preventDefault();
+
+  const demandId = button.getAttribute("data-demand-id");
+  const productKey = button.getAttribute("data-product-key") || button.getAttribute("data-model");
+
+  if (!demandId || !productKey) return;
+
+  selectedModelByDemandId.set(demandId, productKey);
+  renderEstimate();
+}, true);
 
