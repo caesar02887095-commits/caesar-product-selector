@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301136";
+const APP_VERSION = "202607301203";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -112,152 +112,7 @@ const CATEGORY_MAP = {
   grabBar: ["扶手", "無障礙", "無障礙/扶手"]
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
-  addDemandRow("vanity", { qty: 0, width: "" });
-  
-  initializePageState();
 
-  document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => {
-    addDemandRow(btn.dataset.addRow);
-    refreshConditionalOptionVisibility();
-      markDirty();
-  }));
-
-  els.runButton.addEventListener("click", () => {
-    selectedModelByDemandId.clear();
-    refreshConditionalOptionVisibility();
-      renderEstimate();
-  });
-
-  await 
-document.querySelectorAll(".stepper").forEach((stepper) => {
-  const input = document.getElementById(stepper.dataset.target);
-  const minus = stepper.querySelector(".minus");
-  const plus = stepper.querySelector(".plus");
-
-  const changeValue = (delta) => {
-    const min = Number(input.min || 0);
-    const max = input.max ? Number(input.max) : Infinity;
-    const current = Number(input.value || 0);
-    const next = Math.max(min, Math.min(max, current + delta));
-    input.value = String(next);
-    refreshConditionalOptionVisibility();
-      markDirty();
-  };
-
-  minus.addEventListener("click", () => changeValue(-1));
-  plus.addEventListener("click", () => changeValue(1));
-});
-
-
-if (els.includeBidetSeat) {
-  els.includeBidetSeat.addEventListener("change", markDirty);
-}
-
-
-if (els.toiletPipe) {
-  els.toiletPipe.addEventListener("change", markDirty);
-}
-if (els.includeShowerSlider) {
-  els.includeShowerSlider.addEventListener("change", markDirty);
-}
-
-
-// 手機版避免產品卡片連點造成畫面放大或誤觸縮放。
-let lastTouchEndTime = 0;
-document.addEventListener("touchend", (event) => {
-  const target = event.target;
-  const inInteractiveProductArea = target && target.closest && target.closest(".product-card, .product-image, .image-box, .thumb, .alt-list, button");
-  if (!inInteractiveProductArea) return;
-
-  const now = Date.now();
-  if (now - lastTouchEndTime <= 320) {
-    event.preventDefault();
-  }
-  lastTouchEndTime = now;
-}, { passive: false });
-
-
-document.querySelectorAll(".item-qty-row input").forEach((input) => {
-  input.addEventListener("input", refreshConditionalOptionVisibility);
-  input.addEventListener("change", refreshConditionalOptionVisibility);
-});
-
-refreshConditionalOptionVisibility();
-
-document.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!target || !target.closest) return;
-  if (target.closest(".stepper") || target.closest(".item-qty-row")) {
-    setTimeout(refreshConditionalOptionVisibility, 0);
-  }
-});
-
-document.addEventListener("input", (event) => {
-  const target = event.target;
-  if (target && target.closest && target.closest(".item-qty-row")) {
-    refreshConditionalOptionVisibility();
-  }
-});
-
-document.addEventListener("change", (event) => {
-  const target = event.target;
-  if (target && target.closest && target.closest(".item-qty-row")) {
-    refreshConditionalOptionVisibility();
-  }
-});
-
-window.addEventListener("pageshow", () => {
-  refreshConditionalOptionVisibility();
-});
-
-refreshConditionalOptionVisibility();
-
-document.addEventListener("DOMContentLoaded", () => {
-  initializePageState();
-});
-
-window.addEventListener("pageshow", () => {
-  initializePageState();
-});
-
-document.addEventListener("click", (event) => {
-  const target = event.target;
-  if (!target || !target.closest) return;
-  if (target.closest(".stepper") || target.closest(".item-qty-row")) {
-    setTimeout(refreshConditionalOptionVisibility, 0);
-  }
-});
-
-document.addEventListener("input", (event) => {
-  const target = event.target;
-  if (target && target.closest && target.closest(".item-qty-row")) {
-    refreshConditionalOptionVisibility();
-  }
-});
-
-document.addEventListener("change", (event) => {
-  const target = event.target;
-  if (target && target.closest && target.closest(".item-qty-row")) {
-    refreshConditionalOptionVisibility();
-  }
-});
-
-initializePageState();
-
-document.addEventListener("click", (event) => {
-  const btn = event.target && event.target.closest ? event.target.closest("button[data-step][data-target]") : null;
-  if (!btn) return;
-  const input = document.getElementById(btn.dataset.target);
-  if (!input) return;
-  const step = Number(btn.dataset.step || 0);
-  const current = Number(input.value || 0);
-  input.value = String(Math.max(0, current + step));
-  markDirty();
-});
-
-loadProducts();
-});
 
 async function loadProducts() {
   try {
@@ -1090,55 +945,61 @@ function escapeHtml(value) {
 function escapeAttr(value) { return escapeHtml(value); }
 
 
+// v32: 乾淨初始化。修正舊 DOMContentLoaded block 造成初始化中斷。
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    if (els.vanityRows && !els.vanityRows.querySelector(".demand-row")) {
+      addDemandRow("vanity", { qty: 0, width: "" });
+    }
 
+    initializePageState();
 
-// v30: 最小修正 stepper 加減按鈕。不得改動選品邏輯。
-document.addEventListener("click", (event) => {
-  const button = event.target && event.target.closest ? event.target.closest("button[data-step][data-target]") : null;
-  if (!button) return;
+    const addVanityBtn = document.getElementById("addVanityRow");
+    if (addVanityBtn) {
+      addVanityBtn.addEventListener("click", () => {
+        addDemandRow("vanity", { qty: 0, width: "" });
+        if (typeof markDirty === "function") markDirty();
+      });
+    }
 
-  const input = document.getElementById(button.dataset.target);
-  if (!input) return;
+    document.addEventListener("click", (event) => {
+      const button = event.target && event.target.closest ? event.target.closest("button[data-step][data-target]") : null;
+      if (!button) return;
 
-  event.preventDefault();
+      event.preventDefault();
 
-  const step = Number(button.dataset.step || 0);
-  const current = Number(input.value || 0);
-  const nextValue = Math.max(0, current + step);
-  input.value = String(nextValue);
+      const input = document.getElementById(button.dataset.target);
+      if (!input) return;
 
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
+      const step = Number(button.dataset.step || 0);
+      const current = Number(input.value || 0);
+      input.value = String(Math.max(0, current + step));
 
-  if (typeof markDirty === "function") {
-    markDirty();
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+
+      if (typeof markDirty === "function") markDirty();
+    }, true);
+
+    if (els.runButton) {
+      els.runButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        selectedModelByDemandId.clear();
+        renderEstimate();
+      });
+    }
+
+    document.querySelectorAll("input, select").forEach((input) => {
+      if (input.id === "discountInput" || input.id === "budgetInput") return;
+      input.addEventListener("change", () => {
+        if (typeof markDirty === "function") markDirty();
+      });
+    });
+
+    loadProducts();
+  } catch (error) {
+    console.error("Initialization failed:", error);
+    if (typeof setStatus === "function") setStatus("初始化失敗，請檢查瀏覽器主控台。");
   }
-}, true);
-
-
-
-// v31: 最小修正「產生選品試算」按鈕無動作。
-// 不改選品邏輯，只確保按鈕點擊會呼叫既有 renderEstimate()。
-document.addEventListener("click", (event) => {
-  const button = event.target && event.target.closest ? event.target.closest("button") : null;
-  if (!button) return;
-
-  const text = (button.textContent || "").replace(/\s+/g, "");
-  const isGenerateButton =
-    text.includes("產生選品試算") ||
-    text.includes("產生選品") ||
-    button.id === "generateBtn" ||
-    button.id === "estimateBtn" ||
-    button.id === "calculateBtn";
-
-  if (!isGenerateButton) return;
-
-  event.preventDefault();
-
-  if (typeof renderEstimate === "function") {
-    renderEstimate();
-  } else {
-    console.error("renderEstimate is not defined");
-  }
-}, true);
+});
 
