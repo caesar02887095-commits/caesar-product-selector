@@ -1,35 +1,29 @@
-# 凱撒衛浴選品試算工具 MVP v32
+# 凱撒衛浴選品試算工具 MVP v33
 
 ## 本版修正
-修正 v31 仍然按「產生選品試算」沒有反應的問題。
+本版依使用者明確要求，修正以下項目：
 
-## 查到的真正原因
-舊的 DOMContentLoaded 初始化區塊裡仍保留一段舊 stepper 程式：
+1. 改選品項後，要真的變更右側品項。
+2. 改選品項後，總價、折後總價、預算差額要同步更新。
+3. 預算推薦邏輯應以「低於預算且最貼近預算」為主。
+4. 有組合型號時，也不能因為是目錄組合就優先卡死；若動態組合更貼近預算，應推薦動態組合。
+5. 縮放時畫面上下位移，先移除左側 sticky 定位。
 
-- 它期待按鈕有 .minus / .plus class。
-- 但目前 HTML 按鈕是用 data-step / data-target。
-- 因此 minus / plus 會是 null。
-- 執行 minus.addEventListener 時會發生錯誤。
-- 這會中斷後面的初始化，包括 loadProducts() 與 runButton 綁定。
-
-## 本版處理
-- 移除舊 DOMContentLoaded 初始化區塊。
-- 移除 v30 / v31 追加的外掛 click handler，避免重複綁定。
-- 改成一個乾淨初始化流程：
-  - 建立預設浴櫃列。
-  - 初始化預設值。
-  - 綁定新增尺寸按鈕。
-  - 綁定 stepper 加減按鈕。
-  - 綁定產生選品試算按鈕。
-  - 呼叫 loadProducts()。
+## 重要邏輯調整
+- 預算模式下，若使用者改選替代品，該需求會尊重手動選擇。
+- selectBudgetAwareItems 會把手動改選的品項固定納入計算，並重新更新預算差額。
+- toiletCombo 重新接回 buildToiletSeatBundles，因此可比較：
+  - 目錄既有組合，例如 CF1394 + TAF170
+  - 動態組合，例如 CF1363 + TAF220
+- 預算最佳化仍以不超過預算為優先，並選擇最接近預算的總額。
 
 ## 未改動
-- 未改 UI。
-- 未改 buildDemands。
-- 未改 renderEstimate。
-- 未改選品規則。
 - 未改 Google Sheet。
 - 未改 PRODUCT_MASTER。
+- 未改圖片URL。
+- 未改左側排序。
+- 未改品項名稱。
+- 未改資料表欄位。
 
 ## 檔名規則
 固定四檔：
@@ -39,5 +33,5 @@
 - README.md
 
 快取用 query string：
-- style.css?v=202607301203
-- app.js?v=202607301203
+- style.css?v=202607301309
+- app.js?v=202607301309

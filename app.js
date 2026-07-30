@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301203";
+const APP_VERSION = "202607301309";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -221,23 +221,33 @@ function selectDefaultItems(demandCandidates) {
 }
 
 function selectBudgetAwareItems(demandCandidates, discount, budget) {
-  const prepared = demandCandidates.map(({ demand, candidates }) => ({
-    demand,
-    candidates: candidates
+  const prepared = demandCandidates.map(({ demand, candidates }) => {
+    const savedKey = selectedModelByDemandId.get(demand.id);
+    let mapped = candidates
       .filter((p) => p.listPrice > 0)
       .map((p) => ({
         ...p,
         discountedUnit: Math.round(p.listPrice * discount / 100),
         subtotal: Math.round(p.listPrice * discount / 100) * (demand.qty || 1),
         budgetScore: scoreCandidateForBudget(p, demand)
-      }))
-      .sort((a, b) => {
-        if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
-        if (a.sort !== b.sort) return a.sort - b.sort;
-        return a.listPrice - b.listPrice;
-      })
-      .slice(0, 35)
-  }));
+      }));
+
+    const forced = savedKey ? mapped.find((p) => getProductKey(p) === savedKey) : null;
+
+    if (forced) {
+      mapped = [{ ...forced, isForcedSelection: true }];
+    } else {
+      mapped = mapped
+        .sort((a, b) => {
+          if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
+          if (b.budgetScore !== a.budgetScore) return b.budgetScore - a.budgetScore;
+          return a.listPrice - b.listPrice;
+        })
+        .slice(0, 260);
+    }
+
+    return { demand, candidates: mapped };
+  });
 
   if (prepared.some((group) => !group.candidates.length)) {
     return prepared.map(({ demand, candidates }) => ({
@@ -255,7 +265,7 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   if (minPossible > budget) {
     return prepared.map(({ demand, candidates }) => {
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
-      return { ...cheapest, demand, candidates, budgetReason: "最低可用" };
+      return { ...cheapest, demand, candidates, budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用" };
     });
   }
 
@@ -272,7 +282,7 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
         const total = state.total + item.subtotal;
         if (total > budget) continue;
 
-        const score = state.score + item.budgetScore;
+        const score = state.score + item.budgetScore + (item.isForcedSelection ? 100000 : 0);
         const existing = next.get(total);
 
         if (!existing || score > existing.score) {
@@ -285,14 +295,13 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
       }
     }
 
-    // 壓縮狀態，避免候選太多時變慢。
-    states = pruneBudgetStates(next, budget, 900);
+    states = pruneBudgetStates(next, budget, 1400);
   }
 
   if (!states.size) {
     return prepared.map(({ demand, candidates }) => {
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
-      return { ...cheapest, demand, candidates, budgetReason: "最低可用" };
+      return { ...cheapest, demand, candidates, budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用" };
     });
   }
 
@@ -303,7 +312,7 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
     return b.score - a.score;
   })[0];
 
-  return best.picks.map((item) => ({ ...item, budgetReason: "預算匹配" }));
+  return best.picks.map((item) => ({ ...item, budgetReason: item.isForcedSelection ? "手動改選" : "預算匹配" }));
 }
 
 function pruneBudgetStates(states, budget, limit) {
@@ -455,6 +464,15 @@ function firstModelCode(item) {
   return String(item.model || "").split(/[\/+]/)[0].trim();
 }
 
+function getSelectedPipeDistance() {
+  const checked = [...document.querySelectorAll("input[name='toiletPipeCheck']:checked")]
+    .map((input) => String(input.value || "").trim())
+    .filter(Boolean);
+
+  if (checked.length === 1) return checked[0];
+  return "unknown";
+}
+
 function supportsPipe(item, pipe) {
   if (!pipe || pipe === "unknown") return true;
 
@@ -507,7 +525,7 @@ function pipeWarningText(pipe) {
 
 
 function buildToiletSeatBundles() {
-  const selectedPipe = els.toiletPipe ? els.toiletPipe.value : "unknown";
+  const selectedPipe = getSelectedPipeDistance();
 
   const toilets = products
     .filter((p) => p.visible !== false)
@@ -529,7 +547,7 @@ function buildToiletSeatBundles() {
     .filter((p) => Number(p.listPrice || 0) > 0)
     .map((p) => ({
       ...p,
-      category: "電腦馬桶蓋方案",
+      category: "電腦馬桶座方案",
       isDynamicCombo: true,
       sourceType: "智慧馬桶",
       features: `智慧馬桶｜${p.features || ""}`,
@@ -548,7 +566,7 @@ function buildToiletSeatBundles() {
         ...toilet,
         model: `${seat.model} + ${toilet.model}`,
         name: `${toilet.name} + ${seat.name}`,
-        category: "電腦馬桶蓋方案",
+        category: "電腦馬桶座方案",
         listPrice,
         width,
         size: `${toilet.size || ""} / ${seat.size || ""}`.replace(/^ \/ | \/ $/g, ""),
@@ -565,13 +583,12 @@ function buildToiletSeatBundles() {
     });
   });
 
-  // 保留少量預建組合，但排序放在動態組合後，避免過度依賴固定三組。
   const presetCombos = products
     .filter((p) => p.visible !== false)
     .filter((p) => String(p.category || "") === "馬桶組合")
     .map((p) => ({
       ...p,
-      category: "電腦馬桶蓋方案",
+      category: "電腦馬桶座方案",
       isDynamicCombo: true,
       sourceType: "預建組合",
       features: `預建組合｜${p.features || ""}`,
@@ -580,7 +597,6 @@ function buildToiletSeatBundles() {
 
   return [...bundles, ...smartToilets, ...presetCombos];
 }
-
 
 function buildShowerSliderBundles() {
   const showers = products
@@ -635,9 +651,24 @@ function buildShowerSliderBundles() {
 
 
 function findCandidates(demand, preferAccessible) {
-  let candidates = demand.type === "mirror"
-    ? findMirrorCandidates(demand)
-    : findSimpleCandidates(demand);
+  let candidates;
+
+  if (demand.type === "toiletCombo") {
+    candidates = buildToiletSeatBundles();
+  } else if (demand.type === "showerSlider") {
+    candidates = buildShowerSliderBundles();
+  } else if (demand.type === "mirror") {
+    candidates = findMirrorCandidates(demand);
+  } else {
+    candidates = findSimpleCandidates(demand);
+  }
+
+  if (demand.type === "toilet") {
+    const selectedPipe = getSelectedPipeDistance();
+    candidates = candidates
+      .filter((p) => String(p.category || "") === "馬桶")
+      .filter((p) => supportsPipe(p, selectedPipe));
+  }
 
   if (demand.requireAccessible) {
     candidates = candidates.filter((p) => p.accessible || p.category.includes("無障礙") || p.features.includes("無障礙"));
@@ -646,7 +677,6 @@ function findCandidates(demand, preferAccessible) {
   return candidates.sort((a, b) => {
     if (preferAccessible && a.accessible !== b.accessible) return a.accessible ? -1 : 1;
     if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
-    if (a.isCombo !== b.isCombo) return a.isCombo ? 1 : -1;
     if (a.sort !== b.sort) return a.sort - b.sort;
     return a.listPrice - b.listPrice;
   });

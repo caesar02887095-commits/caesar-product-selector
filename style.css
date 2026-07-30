@@ -1005,3 +1005,15 @@ section {
     min-height: 36px !important;
   }
 }
+
+
+/* v33: 縮放時避免左側 sticky 造成上下位移 */
+.controls {
+  position: static !important;
+  top: auto !important;
+}
+
+button:active,
+.step-btn:active {
+  transform: none !important;
+}
