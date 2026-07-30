@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301420";
+const APP_VERSION = "202607301438";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -874,9 +874,16 @@ function buildAltSection(product, qty, discount) {
     const diff = altDiscounted - currentDiscounted;
     const diffText = diff === 0 ? "相同" : `${diff > 0 ? "+" : "-"}${money(Math.abs(diff))}`;
 
+    const altUrl = alt.officialUrl || buildCaesarProductUrl(alt.model);
+    const previewUrl = alt.imageUrl;
+    const altImage = previewUrl
+      ? `<img src="${escapeAttr(previewUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span class="alt-fallback-label" style="display:none;">無圖</span>`
+      : `<span class="alt-fallback-label">無圖</span>`;
+
     return `
-      <div class="alt-item">
-        <div>
+      <div class="alt-item alt-item-card">
+        <a class="alt-thumb" href="${escapeAttr(altUrl)}" target="_blank" rel="noopener noreferrer">${altImage}</a>
+        <div class="alt-info">
           <strong>${escapeHtml(alt.model)}</strong>
           <span>${escapeHtml(alt.name || "")}</span>
         </div>
