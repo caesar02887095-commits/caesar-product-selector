@@ -1,11 +1,28 @@
 
-const APP_VERSION = "202607301014";
+const APP_VERSION = "202607301029";
 
 function forceInitialDefaults() {
-  const discount = document.getElementById("discount");
+  const discount = document.getElementById("discountInput");
   if (discount) discount.value = "45";
 
-  document.querySelectorAll(".qty-input").forEach((input) => {
+  const qtyIds = [
+    "toiletQty",
+    "basinFaucetQty",
+    "showerFaucetQty",
+    "kitchenFaucetQty",
+    "bathAccessoryQty",
+    "towelWarmerQty",
+    "bathHeaterQty",
+    "bathtubQty",
+    "grabBarQty"
+  ];
+
+  qtyIds.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.value = "0";
+  });
+
+  document.querySelectorAll(".demand-row .qty").forEach((input) => {
     input.value = "0";
   });
 
@@ -106,8 +123,9 @@ const CATEGORY_MAP = {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
-  addDemandRow("vanity", { qty: 1, width: 800 });
-  addDemandRow("mirror", { qty: 1, width: 800 });
+  addDemandRow("vanity", { qty: 0, width: "" });
+  addDemandRow("mirror", { qty: 0, width: "" });
+  initializePageState();
 
   document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => {
     addDemandRow(btn.dataset.addRow);
@@ -277,7 +295,7 @@ function normalizeProduct(row) {
 function addDemandRow(type, defaults = {}) {
   const fragment = els.rowTemplate.content.cloneNode(true);
   const row = fragment.querySelector(".demand-row");
-  row.querySelector(".qty").value = defaults.qty ?? 1;
+  row.querySelector(".qty").value = defaults.qty ?? 0;
   row.querySelector(".width").value = defaults.width ?? "";
   row.querySelector(".remove-row").addEventListener("click", () => {
     row.remove();
@@ -319,7 +337,7 @@ function renderEstimate() {
     return;
   }
 
-  const discount = clamp(parseNumber(els.discount.value) || 35, 1, 100);
+  const discount = clamp(parseNumber(els.discount.value) || 45, 1, 100);
   const budget = parseNumber(els.budget.value);
   const preferAccessible = els.accessible.checked;
   const demands = buildDemands();

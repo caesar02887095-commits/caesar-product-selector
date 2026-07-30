@@ -9,7 +9,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>凱撒衛浴選品試算工具</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=202607301029" />
 </head>
 <body>
   <header class="app-header">
@@ -28,7 +28,7 @@
         <label>
           <span>折扣</span>
           <div class="inline-input">
-            <input autocomplete="off" id="discountInput" type="number" inputmode="decimal" min="1" max="100" value="35" />
+            <input autocomplete="off" id="discountInput" type="number" inputmode="decimal" min="1" max="100" value="45" />
             <span>折</span>
           </div>
         </label>
@@ -37,13 +37,13 @@
           <span>預算（選填）</span>
           <div class="inline-input">
             <span>NT$</span>
-            <input id="budgetInput" type="number" inputmode="numeric" min="0" placeholder="例如 8000" />
+            <input autocomplete="off" id="budgetInput" type="number" inputmode="numeric" min="0" placeholder="例如 8000" />
           </div>
         </label>
       </div>
 
       <label class="check-row">
-        <input id="accessibleInput" type="checkbox" />
+        <input autocomplete="off" id="accessibleInput" type="checkbox" />
         <span>優先無障礙相關品項</span>
       </label>
 
@@ -55,12 +55,12 @@
           <span>馬桶數量</span>
           <div class="stepper" data-target="toiletQty">
             <button type="button" class="step-btn minus" aria-label="馬桶數量減少">−</button>
-            <input id="toiletQty" type="number" min="0" value="2" readonly />
+            <input autocomplete="off" id="toiletQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="馬桶數量增加">＋</button>
           </div>
         </div>
         <div class="check-row sub-check item-sub-row">
-          <input id="includeBidetSeat" type="checkbox" />
+          <input autocomplete="off" id="includeBidetSeat" type="checkbox" />
           <span>需要電腦馬桶座</span>
         </div>
         <label class="item-sub-row pipe-row">
@@ -75,7 +75,7 @@
           <span>面盆龍頭數量</span>
           <div class="stepper" data-target="basinFaucetQty">
             <button type="button" class="step-btn minus" aria-label="面盆龍頭數量減少">−</button>
-            <input id="basinFaucetQty" type="number" min="0" value="1" readonly />
+            <input autocomplete="off" id="basinFaucetQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="面盆龍頭數量增加">＋</button>
           </div>
         </div>
@@ -83,19 +83,19 @@
           <span>沐浴龍頭數量</span>
           <div class="stepper" data-target="showerFaucetQty">
             <button type="button" class="step-btn minus" aria-label="沐浴龍頭數量減少">−</button>
-            <input id="showerFaucetQty" type="number" min="0" value="1" readonly />
+            <input autocomplete="off" id="showerFaucetQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="沐浴龍頭數量增加">＋</button>
           </div>
         </div>
         <div class="check-row sub-check item-sub-row">
-          <input id="includeShowerSlider" type="checkbox" />
+          <input autocomplete="off" id="includeShowerSlider" type="checkbox" />
           <span>搭配滑桿 / 蓮蓬頭</span>
         </div>
         <div class="qty-field item-qty-row">
           <span>廚房龍頭數量</span>
           <div class="stepper" data-target="kitchenFaucetQty">
             <button type="button" class="step-btn minus" aria-label="廚房龍頭數量減少">−</button>
-            <input id="kitchenFaucetQty" type="number" min="0" value="0" readonly />
+            <input autocomplete="off" id="kitchenFaucetQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="廚房龍頭數量增加">＋</button>
           </div>
         </div>
@@ -103,7 +103,7 @@
           <span>浴室配件數量</span>
           <div class="stepper" data-target="bathAccessoryQty">
             <button type="button" class="step-btn minus" aria-label="浴室配件數量減少">−</button>
-            <input id="bathAccessoryQty" type="number" min="0" value="0" readonly />
+            <input autocomplete="off" id="bathAccessoryQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="浴室配件數量增加">＋</button>
           </div>
         </div>
@@ -111,7 +111,7 @@
           <span>電熱毛巾架數量</span>
           <div class="stepper" data-target="towelWarmerQty">
             <button type="button" class="step-btn minus" aria-label="電熱毛巾架數量減少">−</button>
-            <input id="towelWarmerQty" type="number" min="0" value="0" readonly />
+            <input autocomplete="off" id="towelWarmerQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="電熱毛巾架數量增加">＋</button>
           </div>
         </div>
@@ -119,7 +119,7 @@
           <span>浴室暖風機數量</span>
           <div class="stepper" data-target="bathHeaterQty">
             <button type="button" class="step-btn minus" aria-label="浴室暖風機數量減少">−</button>
-            <input id="bathHeaterQty" type="number" min="0" value="0" readonly />
+            <input autocomplete="off" id="bathHeaterQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="浴室暖風機數量增加">＋</button>
           </div>
         </div>
@@ -127,7 +127,7 @@
           <span>浴缸數量</span>
           <div class="stepper" data-target="bathtubQty">
             <button type="button" class="step-btn minus" aria-label="浴缸數量減少">−</button>
-            <input id="bathtubQty" type="number" min="0" value="0" readonly />
+            <input autocomplete="off" id="bathtubQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="浴缸數量增加">＋</button>
           </div>
         </div>
@@ -135,7 +135,7 @@
           <span>扶手 / 無障礙配件數量</span>
           <div class="stepper" data-target="grabBarQty">
             <button type="button" class="step-btn minus" aria-label="扶手 / 無障礙配件數量減少">−</button>
-            <input id="grabBarQty" type="number" min="0" value="0" readonly />
+            <input autocomplete="off" id="grabBarQty" type="number" min="0" value="0" readonly />
             <button type="button" class="step-btn plus" aria-label="扶手 / 無障礙配件數量增加">＋</button>
           </div>
         </div>
@@ -191,16 +191,16 @@
     <div class="demand-row">
       <label>
         <span>數量</span>
-        <input class="qty" type="number" min="0" value="1" />
+        <input autocomplete="off" class="qty" type="number" min="0" value="0" />
       </label>
       <label>
         <span>寬度 cm</span>
-        <input class="width" type="number" min="0" placeholder="例如 80" />
+        <input autocomplete="off" class="width" type="number" min="0" placeholder="例如 80" />
       </label>
       <button class="remove-row" type="button">刪除</button>
     </div>
   </template>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=202607301029"></script>
 </body>
 </html>

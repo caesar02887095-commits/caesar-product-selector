@@ -627,3 +627,43 @@ section {
     font-size: 15px !important;
   }
 }
+
+
+/* v27: 實際固定值修正後的收合與字級補強 */
+.item-sub-row[hidden],
+.item-sub-row[aria-hidden="true"] {
+  display: none !important;
+}
+
+.controls,
+.controls label,
+.controls input,
+.controls select,
+.controls button {
+  font-size: 16px;
+}
+
+.controls h3 {
+  font-size: 18px;
+}
+
+.item-qty-row > span {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+.item-sub-row,
+.item-sub-row span,
+.pipe-row span {
+  font-size: 15.5px !important;
+}
+
+.stepper input {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+}
+
+.stepper button {
+  font-size: 21px !important;
+  font-weight: 800 !important;
+}
