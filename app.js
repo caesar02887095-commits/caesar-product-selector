@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301405";
+const APP_VERSION = "202607301420";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -865,7 +865,7 @@ function buildAltSection(product, qty, discount) {
     : "";
 
   if (!alternatives.length) {
-    return currentLabel;
+    return currentLabel ? `<div class="alt-section">${currentLabel}</div>` : "";
   }
 
   const items = alternatives.map((alt) => {
@@ -889,7 +889,7 @@ function buildAltSection(product, qty, discount) {
     `;
   }).join("");
 
-  return `${currentLabel}<button class="alt-toggle" type="button">展開其他可選型號</button><div class="alt-list">${items}</div>`;
+  return `<div class="alt-section">${currentLabel}<button class="alt-toggle" type="button">展開其他可選型號</button><div class="alt-list">${items}</div></div>`;
 }
 
 
