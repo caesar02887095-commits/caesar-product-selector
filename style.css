@@ -362,3 +362,108 @@ section {
     gap: 6px !important;
   }
 }
+
+
+/* v23: 左側需求區改為單欄品項群組，避免互擠 */
+.field-grid.two:has(.item-qty-row),
+.field-grid:has(.item-qty-row) {
+  display: block !important;
+  width: 100% !important;
+}
+
+.field-grid:has(.item-qty-row) > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.item-qty-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 132px !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin: 14px 0 0 !important;
+  padding: 0 !important;
+}
+
+.item-qty-row > span {
+  min-width: 0 !important;
+  white-space: normal !important;
+  word-break: keep-all !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+}
+
+.item-qty-row .stepper {
+  width: 132px !important;
+  min-width: 132px !important;
+  max-width: 132px !important;
+  justify-self: end !important;
+  display: grid !important;
+  grid-template-columns: 38px 1fr 38px !important;
+  gap: 6px !important;
+}
+
+.item-qty-row .stepper button,
+.item-qty-row .stepper input {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.item-sub-row {
+  width: calc(100% - 12px) !important;
+  max-width: calc(100% - 12px) !important;
+  margin: 7px 0 0 12px !important;
+  padding: 8px 10px !important;
+  box-sizing: border-box !important;
+  border-left: 3px solid rgba(120, 120, 120, 0.18) !important;
+  border-radius: 8px !important;
+  background: rgba(0, 0, 0, 0.015) !important;
+}
+
+.check-row.item-sub-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.pipe-row {
+  display: grid !important;
+  grid-template-columns: 100px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.pipe-row select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 640px) {
+  .item-qty-row {
+    grid-template-columns: minmax(0, 1fr) 118px !important;
+    gap: 8px !important;
+  }
+
+  .item-qty-row .stepper {
+    width: 118px !important;
+    min-width: 118px !important;
+    max-width: 118px !important;
+    grid-template-columns: 34px 1fr 34px !important;
+    gap: 5px !important;
+  }
+
+  .item-sub-row {
+    width: calc(100% - 8px) !important;
+    max-width: calc(100% - 8px) !important;
+    margin-left: 8px !important;
+    padding: 8px !important;
+  }
+
+  .pipe-row {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+}

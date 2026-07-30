@@ -51,12 +51,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => {
     addDemandRow(btn.dataset.addRow);
-    markDirty();
+    refreshConditionalOptionVisibility();
+      markDirty();
   }));
 
   els.runButton.addEventListener("click", () => {
     selectedModelByDemandId.clear();
-    renderEstimate();
+    refreshConditionalOptionVisibility();
+      renderEstimate();
   });
 
   await 
@@ -71,7 +73,8 @@ document.querySelectorAll(".stepper").forEach((stepper) => {
     const current = Number(input.value || 0);
     const next = Math.max(min, Math.min(max, current + delta));
     input.value = String(next);
-    markDirty();
+    refreshConditionalOptionVisibility();
+      markDirty();
   };
 
   minus.addEventListener("click", () => changeValue(-1));
@@ -106,6 +109,13 @@ document.addEventListener("touchend", (event) => {
   lastTouchEndTime = now;
 }, { passive: false });
 
+
+document.querySelectorAll(".item-qty-row input").forEach((input) => {
+  input.addEventListener("input", refreshConditionalOptionVisibility);
+  input.addEventListener("change", refreshConditionalOptionVisibility);
+});
+
+refreshConditionalOptionVisibility();
 loadProducts();
 });
 
@@ -151,7 +161,8 @@ function addDemandRow(type, defaults = {}) {
   row.querySelector(".width").value = defaults.width ?? "";
   row.querySelector(".remove-row").addEventListener("click", () => {
     row.remove();
-    markDirty();
+    refreshConditionalOptionVisibility();
+      markDirty();
   });
   if (type === "vanity") els.vanityRows.appendChild(fragment);
   if (type === "mirror") els.mirrorRows.appendChild(fragment);
@@ -167,6 +178,29 @@ function markDirty() {
   } else {
     setStatus("設定完成後，請按「產生選品」。");
   }
+}
+
+
+function normalizeWidthInputToMm(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+  const n = Number(raw.replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  // 畫面輸入採 cm；若舊資料或使用者輸入 600 以上，視為已經是 mm。
+  return n >= 300 ? Math.round(n) : Math.round(n * 10);
+}
+
+function refreshConditionalOptionVisibility() {
+  document.querySelectorAll(".item-qty-row").forEach((row) => {
+    const input = row.querySelector("input");
+    if (!input) return;
+    const qty = Number(input.value || 0);
+    let next = row.nextElementSibling;
+    while (next && next.classList && next.classList.contains("item-sub-row")) {
+      next.style.display = qty > 0 ? "" : "none";
+      next = next.nextElementSibling;
+    }
+  });
 }
 
 function renderEstimate() {
@@ -735,6 +769,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
   card.querySelectorAll(".choose-alt").forEach((btn) => {
     btn.addEventListener("click", () => {
       selectedModelByDemandId.set(btn.dataset.demandId, btn.dataset.productKey);
+      refreshConditionalOptionVisibility();
       renderEstimate();
     });
   });
