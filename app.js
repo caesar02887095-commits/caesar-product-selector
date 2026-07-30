@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301500";
+const APP_VERSION = "202607301634";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -99,7 +99,9 @@ const els = {
 
 const CATEGORY_MAP = {
   toiletCombo: ["馬桶組合", "智慧馬桶"],
-  toilet: ["馬桶", "智慧馬桶"],
+  toilet: ["馬桶"],
+  smartToilet: ["智慧馬桶"],
+  bidetSeat: ["溫水洗淨便座"],
   vanity: ["浴櫃/臉盆組", "臉盆浴櫃組", "浴櫃", "臉盆"],
   mirror: ["鏡櫃", "鏡子", "鏡子/鏡櫃", "開放櫃"],
   basinFaucet: ["面盆龍頭", "臉盆龍頭"],
@@ -195,6 +197,7 @@ function normalizeWidthInputToMm(value) {
 function renderEstimate() {
   refreshConditionalOptionVisibility();
   hasGeneratedOnce = true;
+  window.__lastAutoAdjustNotice = "";
   if (!products.length) {
     setStatus("尚未載入產品資料。");
     return;
@@ -210,11 +213,17 @@ function renderEstimate() {
     return { demand, candidates };
   });
 
+  ensureLinkedBidetSeatSelection(demandCandidates);
+
   const selected = budget > 0
     ? selectBudgetAwareItems(demandCandidates, discount, budget)
     : selectDefaultItems(demandCandidates);
 
   drawResults(selected, discount, budget);
+
+  if (window.__lastAutoAdjustNotice) {
+    setStatus(window.__lastAutoAdjustNotice);
+  }
 }
 
 
@@ -416,12 +425,33 @@ function buildDemands() {
   const toiletQty = getQty("toiletQty");
   if (toiletQty > 0) {
     const includeBidetSeat = Boolean(document.getElementById("includeBidetSeat")?.checked);
-    demands.push({
-      id: includeBidetSeat ? "toiletCombo-toilet" : "toilet-toilet",
-      type: includeBidetSeat ? "toiletCombo" : "toilet",
-      label: includeBidetSeat ? "電腦馬桶座方案" : "馬桶",
-      qty: toiletQty
-    });
+    if (includeBidetSeat) {
+      const groupId = "toilet-set-1";
+      demands.push({
+        id: "toilet-toilet",
+        type: "toilet",
+        label: "馬桶",
+        qty: toiletQty,
+        groupId,
+        groupRole: "toilet"
+      });
+      demands.push({
+        id: "bidetSeat-toilet",
+        type: "bidetSeat",
+        label: "電腦馬桶蓋 / 溫水洗淨便座",
+        qty: toiletQty,
+        groupId,
+        groupRole: "bidetSeat",
+        dependsOnDemandId: "toilet-toilet"
+      });
+    } else {
+      demands.push({
+        id: "toilet-toilet",
+        type: "toilet",
+        label: "馬桶",
+        qty: toiletQty
+      });
+    }
   }
 
   document.querySelectorAll("#vanityRows .demand-row").forEach((row, index) => {
@@ -695,11 +725,9 @@ function findCandidates(demand, preferAccessible) {
     candidates = findSimpleCandidates(demand);
   }
 
-  if (demand.type === "toilet") {
+  if (demand.type === "toilet" || demand.type === "smartToilet") {
     const selectedPipe = getSelectedPipeDistance();
-    candidates = candidates
-      .filter((p) => String(p.category || "") === "馬桶")
-      .filter((p) => supportsPipe(p, selectedPipe));
+    candidates = candidates.filter((p) => supportsPipe(p, selectedPipe));
   }
 
   if (demand.requireAccessible) {
@@ -714,6 +742,109 @@ function findCandidates(demand, preferAccessible) {
   });
 }
 
+
+function isSmartToiletProduct(product) {
+  return String(product.category || "").includes("智慧馬桶");
+}
+
+function isBidetSeatProduct(product) {
+  return String(product.category || "").includes("溫水洗淨便座");
+}
+
+function isToiletProduct(product) {
+  const category = String(product.category || "");
+  return category.includes("馬桶") && !category.includes("智慧馬桶") && !category.includes("馬桶組合") && !category.includes("溫水洗淨便座");
+}
+
+function getSeatFitGroup(product) {
+  const model = String(product.model || "");
+  const text = `${product.name || ""} ${product.features || ""} ${product.notes || ""} ${product.note || ""}`;
+
+  if (/TAF060/i.test(model)) return "exclude";
+  if (/TAF16[08]/i.test(model) || text.includes("小馬桶")) return "small";
+  if (/TAF17[08]/i.test(model) || text.includes("大座圈")) return "large";
+  if (/TAF220|TAF210|TAF200|TAF191|TAF180/i.test(model)) return "general";
+  return "unknown";
+}
+
+function getToiletFitGroup(product) {
+  const model = String(product.model || "");
+  const text = `${product.name || ""} ${product.features || ""} ${product.notes || ""} ${product.note || ""}`;
+
+  if (/CF1354|CF1454/i.test(model)) return "no-bidet";
+  if (text.includes("短版") || text.includes("短座")) return "no-bidet";
+  if (text.includes("小馬桶")) return "small";
+  if (/CF1325|CB1325|CT1325|CTH1325|CTA1325|CF1425|CB1425|CT1425|CTH1425|CTA1425/i.test(model)) return "small";
+  return "large";
+}
+
+function isBidetSeatCompatibleWithToilet(seat, toilet) {
+  if (!seat || !toilet) return true;
+
+  const seatGroup = getSeatFitGroup(seat);
+  const toiletGroup = getToiletFitGroup(toilet);
+
+  if (seatGroup === "exclude") return false;
+  if (toiletGroup === "no-bidet") return false;
+  if (seatGroup === "small") return toiletGroup === "small";
+  if (seatGroup === "large") return toiletGroup !== "small" && toiletGroup !== "no-bidet";
+  if (seatGroup === "general" || seatGroup === "unknown") return toiletGroup !== "no-bidet";
+  return true;
+}
+
+function sortBidetSeatsForToilet(candidates, toilet) {
+  return candidates
+    .filter((seat) => isBidetSeatCompatibleWithToilet(seat, toilet))
+    .sort((a, b) => {
+      const toiletGroup = getToiletFitGroup(toilet);
+      const score = (seat) => {
+        const group = getSeatFitGroup(seat);
+        let value = Number(seat.sort || seat.sortOrder || 999);
+        if (group === "small" && toiletGroup === "small") value -= 200;
+        if (group === "large" && toiletGroup === "large") value -= 200;
+        if (group === "general") value -= 50;
+        return value;
+      };
+      return score(a) - score(b) || Number(a.listPrice || 0) - Number(b.listPrice || 0);
+    });
+}
+
+function getSelectedProductByDemandId(selectedMap, demandId, demandCandidates) {
+  const key = selectedMap.get(demandId);
+  if (!key) return null;
+  const pair = demandCandidates.find((entry) => entry.demand.id === demandId);
+  if (!pair) return null;
+  return pair.candidates.find((p) => getProductKey(p) === key) || null;
+}
+
+function ensureLinkedBidetSeatSelection(demandCandidates) {
+  const toiletEntry = demandCandidates.find((entry) => entry.demand.id === "toilet-toilet");
+  const bidetEntry = demandCandidates.find((entry) => entry.demand.id === "bidetSeat-toilet");
+  if (!toiletEntry || !bidetEntry) return;
+
+  const selectedToilet = getSelectedProductByDemandId(selectedModelByDemandId, "toilet-toilet", demandCandidates) || toiletEntry.candidates[0] || null;
+  if (!selectedToilet) {
+    selectedModelByDemandId.delete("bidetSeat-toilet");
+    bidetEntry.candidates = [];
+    return;
+  }
+
+  bidetEntry.candidates = sortBidetSeatsForToilet(bidetEntry.candidates, selectedToilet);
+
+  const currentSeat = getSelectedProductByDemandId(selectedModelByDemandId, "bidetSeat-toilet", demandCandidates);
+  if (currentSeat && isBidetSeatCompatibleWithToilet(currentSeat, selectedToilet)) {
+    return;
+  }
+
+  if (bidetEntry.candidates.length) {
+    selectedModelByDemandId.set("bidetSeat-toilet", getProductKey(bidetEntry.candidates[0]));
+    window.__lastAutoAdjustNotice = "已因馬桶型號變更，自動調整電腦馬桶蓋適裝款。";
+  } else {
+    selectedModelByDemandId.delete("bidetSeat-toilet");
+    window.__lastAutoAdjustNotice = "此馬桶目前不建議搭配電腦馬桶蓋，請改選其他馬桶或取消電腦馬桶蓋需求。";
+  }
+}
+
 function findSimpleCandidates(demand) {
   const categoryNames = CATEGORY_MAP[demand.type] || [];
   if (!categoryNames.length) {
@@ -725,6 +856,18 @@ function findSimpleCandidates(demand) {
     const category = String(p.category || "");
     return categoryNames.some((name) => category.includes(name) || name.includes(category));
   });
+
+  if (demand.type === "toilet") {
+    candidates = candidates.filter(isToiletProduct);
+  }
+
+  if (demand.type === "smartToilet") {
+    candidates = candidates.filter(isSmartToiletProduct);
+  }
+
+  if (demand.type === "bidetSeat") {
+    candidates = candidates.filter((p) => isBidetSeatProduct(p) && getSeatFitGroup(p) !== "exclude");
+  }
 
   if (demand.width) {
     const exactOrNear = candidates
@@ -851,7 +994,7 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
         <p class="model">${escapeHtml(product.model)}<span class="product-name-inline">${escapeHtml(product.name)}</span></p>
         ${comboBadge}
       </div>
-      <p class="tags">${buildReasonText(product)}${escapeHtml(product.features || "未填特殊功能")}</p>
+      <p class="tags">${product.demand && product.demand.groupId ? `<span class="combo-badge">同組適裝</span> ` : ""}${buildReasonText(product)}${escapeHtml(product.features || "未填特殊功能")}</p>
       <div class="price-grid">
         <div><span>定價</span><strong>${money(product.listPrice)}</strong></div>
         <div><span>折後單價</span><strong>${money(discountedUnit)}</strong></div>
