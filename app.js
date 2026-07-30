@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301029";
+const APP_VERSION = "202607301055";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -10,10 +10,18 @@ function forceInitialDefaults() {
     "basinFaucetQty",
     "showerFaucetQty",
     "kitchenFaucetQty",
-    "bathAccessoryQty",
-    "towelWarmerQty",
+    "towelRackQty",
+    "shelfQty",
+    "hookQty",
+    "exhaustFanQty",
     "bathHeaterQty",
+    "towelWarmerQty",
+    "electricClothesRackQty",
+    "handDryerQty",
+    "electricWaterHeaterQty",
+    "urinalQty",
     "bathtubQty",
+    "showerDoorQty",
     "grabBarQty"
   ];
 
@@ -26,7 +34,7 @@ function forceInitialDefaults() {
     input.value = "0";
   });
 
-  document.querySelectorAll(".item-sub-row input[type='checkbox']").forEach((checkbox) => {
+  document.querySelectorAll(".sub-option input[type='checkbox']").forEach((checkbox) => {
     checkbox.checked = false;
   });
 }
@@ -38,25 +46,7 @@ function getQuantityFromItemRow(row) {
 }
 
 function refreshConditionalOptionVisibility() {
-  document.querySelectorAll(".item-qty-row").forEach((row) => {
-    const qty = getQuantityFromItemRow(row);
-    let next = row.nextElementSibling;
-
-    while (next && next.classList && next.classList.contains("item-sub-row")) {
-      const shouldShow = qty > 0;
-      next.hidden = !shouldShow;
-      next.style.display = shouldShow ? "" : "none";
-      next.setAttribute("aria-hidden", shouldShow ? "false" : "true");
-
-      if (!shouldShow) {
-        next.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-          checkbox.checked = false;
-        });
-      }
-
-      next = next.nextElementSibling;
-    }
-  });
+  // v28 左側改為明確群組，附屬選項固定顯示，不再做自動收合。
 }
 
 function initializePageState() {
@@ -124,7 +114,7 @@ const CATEGORY_MAP = {
 
 document.addEventListener("DOMContentLoaded", async () => {
   addDemandRow("vanity", { qty: 0, width: "" });
-  addDemandRow("mirror", { qty: 0, width: "" });
+  
   initializePageState();
 
   document.querySelectorAll("[data-add-row]").forEach((btn) => btn.addEventListener("click", () => {
@@ -254,6 +244,18 @@ document.addEventListener("change", (event) => {
 });
 
 initializePageState();
+
+document.addEventListener("click", (event) => {
+  const btn = event.target && event.target.closest ? event.target.closest("button[data-step][data-target]") : null;
+  if (!btn) return;
+  const input = document.getElementById(btn.dataset.target);
+  if (!input) return;
+  const step = Number(btn.dataset.step || 0);
+  const current = Number(input.value || 0);
+  input.value = String(Math.max(0, current + step));
+  markDirty();
+});
+
 loadProducts();
 });
 
@@ -502,48 +504,85 @@ function sumSelectedSubtotal(selected, discount) {
 
 function buildDemands() {
   const demands = [];
-  const toiletQty = parseNumber(els.toiletQty.value);
+  const getQty = (id) => Math.max(0, parseNumber(document.getElementById(id)?.value));
+  const addQtyDemand = (id, type, label) => {
+    const qty = getQty(id);
+    if (qty > 0) {
+      demands.push({
+        id: `${type}-${id}`,
+        type,
+        label,
+        qty
+      });
+    }
+  };
+
+  const toiletQty = getQty("toiletQty");
   if (toiletQty > 0) {
-    const withBidetSeat = Boolean(els.includeBidetSeat && els.includeBidetSeat.checked);
+    const includeBidetSeat = Boolean(document.getElementById("includeBidetSeat")?.checked);
     demands.push({
-      id: withBidetSeat ? "toiletCombo" : "toilet",
-      type: withBidetSeat ? "toiletCombo" : "toilet",
-      label: withBidetSeat ? "需要電腦馬桶蓋" : "馬桶",
+      id: includeBidetSeat ? "toiletCombo-toilet" : "toilet-toilet",
+      type: includeBidetSeat ? "toiletCombo" : "toilet",
+      label: includeBidetSeat ? "電腦馬桶座方案" : "馬桶",
       qty: toiletQty
     });
   }
 
-  getDemandRows(els.vanityRows).forEach((item, index) => {
-    if (item.qty > 0) demands.push({ id: `vanity-${index}-${item.width || 0}`, type: "vanity", label: `浴櫃/臉盆組 ${index + 1}`, qty: item.qty, width: item.width });
+  document.querySelectorAll("#vanityRows .demand-row").forEach((row, index) => {
+    const qty = Math.max(0, parseNumber(row.querySelector(".qty")?.value));
+    const width = normalizeWidthInputToMm(row.querySelector(".width")?.value);
+    if (qty > 0) {
+      demands.push({
+        id: `vanity-${index}`,
+        type: "vanity",
+        label: width ? `浴櫃 / 臉盆組 ${Math.round(width / 10)}cm` : "浴櫃 / 臉盆組",
+        qty,
+        width
+      });
+    }
   });
 
-  getDemandRows(els.mirrorRows).forEach((item, index) => {
-    if (item.qty > 0) demands.push({ id: `mirror-${index}-${item.width || 0}`, type: "mirror", label: `鏡櫃/鏡子 ${index + 1}`, qty: item.qty, width: item.width });
-  });
+  addQtyDemand("basinFaucetQty", "basinFaucet", "面盆龍頭");
 
-  const basinQty = parseNumber(els.basinFaucetQty.value);
-  if (basinQty > 0) demands.push({ id: "basinFaucet", type: "basinFaucet", label: "面盆龍頭", qty: basinQty });
+  const showerQty = getQty("showerFaucetQty");
+  if (showerQty > 0) {
+    const withSlider = Boolean(document.getElementById("includeShowerSlider")?.checked);
+    demands.push({
+      id: withSlider ? "showerSlider-shower" : "showerFaucet-shower",
+      type: withSlider ? "showerSlider" : "showerFaucet",
+      label: withSlider ? "沐浴龍頭 + 滑桿 / 蓮蓬頭" : "沐浴龍頭",
+      qty: showerQty
+    });
+  }
 
-  const showerQty = parseNumber(els.showerFaucetQty.value);
-  if (showerQty > 0) demands.push({ id: "showerFaucet", type: "showerFaucet", label: "沐浴龍頭", qty: showerQty });
+  addQtyDemand("kitchenFaucetQty", "kitchenFaucet", "廚房龍頭");
 
-  const kitchenQty = parseNumber(els.kitchenFaucetQty.value);
-  if (kitchenQty > 0) demands.push({ id: "kitchenFaucet", type: "kitchenFaucet", label: "廚房龍頭", qty: kitchenQty });
+  addQtyDemand("towelRackQty", "bathAccessory", "毛巾架");
+  addQtyDemand("shelfQty", "bathAccessory", "置物架");
+  addQtyDemand("hookQty", "bathAccessory", "掛衣勾");
 
-  const accessoryQty = parseNumber(els.bathAccessoryQty.value);
-  if (accessoryQty > 0) demands.push({ id: "bathAccessory", type: "bathAccessory", label: "浴室配件", qty: accessoryQty });
+  addQtyDemand("exhaustFanQty", "bathHeater", "抽風扇");
+  addQtyDemand("bathHeaterQty", "bathHeater", "浴室暖風機");
+  addQtyDemand("towelWarmerQty", "towelWarmer", "電熱毛巾架");
+  addQtyDemand("electricClothesRackQty", "clothesRack", "電動曬衣架");
+  addQtyDemand("handDryerQty", "handDryer", "烘手機");
+  addQtyDemand("electricWaterHeaterQty", "waterHeater", "電能熱水器");
 
-  const towelWarmerQty = parseNumber(els.towelWarmerQty.value);
-  if (towelWarmerQty > 0) demands.push({ id: "towelWarmer", type: "towelWarmer", label: "電熱毛巾架", qty: towelWarmerQty });
+  addQtyDemand("urinalQty", "urinal", "小便斗（含感應器或指壓）");
+  addQtyDemand("bathtubQty", "bathtub", "浴缸");
+  addQtyDemand("showerDoorQty", "showerDoor", "無框淋浴拉門");
 
-  const bathHeaterQty = parseNumber(els.bathHeaterQty.value);
-  if (bathHeaterQty > 0) demands.push({ id: "bathHeater", type: "bathHeater", label: "浴室暖風機", qty: bathHeaterQty });
-
-  const bathtubQty = parseNumber(els.bathtubQty.value);
-  if (bathtubQty > 0) demands.push({ id: "bathtub", type: "bathtub", label: "浴缸", qty: bathtubQty });
-
-  const grabQty = parseNumber(els.grabBarQty.value);
-  if (grabQty > 0) demands.push({ id: "grabBar", type: "grabBar", label: "扶手 / 無障礙配件", qty: grabQty, requireAccessible: true });
+  const grabBarQty = getQty("grabBarQty");
+  if (grabBarQty > 0) {
+    const width = normalizeWidthInputToMm(document.getElementById("grabBarWidthCm")?.value);
+    demands.push({
+      id: "grabBar-grabBarQty",
+      type: "grabBar",
+      label: width ? `扶手 ${Math.round(width / 10)}cm` : "扶手",
+      qty: grabBarQty,
+      width
+    });
+  }
 
   return demands;
 }

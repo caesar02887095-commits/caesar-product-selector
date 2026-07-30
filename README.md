@@ -1,43 +1,48 @@
-# 凱撒衛浴選品試算工具 MVP v27
+# 凱撒衛浴選品試算工具 MVP v28
 
-## 本版修正
-本版針對使用者回報「一樣沒有收合、一樣都還有舊資料」進行實際檢查後修正。
+## 本版重點
+重排左側條件輸入，不再用前一版的相鄰列收合邏輯。
 
-## 查到的問題
-1. index.html 仍有固定舊值：
-   - discountInput value="35"
-   - toiletQty value="2"
-   - basinFaucetQty value="1"
-   - showerFaucetQty value="1"
+## 左側排序
+基本品項：
+- 馬桶數量
+  - 需要電腦馬桶座
+  - 馬桶糞管距離：30 / 40
+- 浴櫃 / 臉盆組
+  - 數量 / 寬度（公分）
+  - 新增尺寸
+- 面盆龍頭數量
+- 沐浴龍頭數量
+  - 搭配滑桿 / 蓮蓬頭
+- 廚房龍頭數量
 
-2. app.js 內 forceInitialDefaults 抓錯 ID：
-   - 原本抓 document.getElementById("discount")
-   - 實際欄位是 discountInput
+浴室配件：
+- 毛巾架數量
+- 置物架數量
+- 掛衣勾數量
 
-3. app.js 內查詢 .qty-input，但 HTML 的數量 input 沒有 qty-input class。
+機能電器：
+- 抽風扇數量
+- 浴室暖風機數量
+- 電熱毛巾架數量
+- 電動曬衣架數量
+- 烘手機數量
+- 電能熱水器數量
 
-4. app.js 仍固定新增浴櫃 / 鏡櫃：
-   - qty: 1
-   - width: 800
-
-## 本版修正內容
-- 折數 HTML 固定值改為 45。
-- 所有基本品項 HTML 固定數量改為 0。
-- forceInitialDefaults 改抓正確 ID：discountInput。
-- forceInitialDefaults 逐一重設所有數量欄位。
-- 浴櫃 / 鏡櫃預設新增列改為 qty 0、width 空白。
-- addDemandRow 預設 qty 改為 0。
-- renderEstimate 折數 fallback 從 35 改為 45。
-- 額外選項依數量 0 / 大於 0 收合。
-- 左側字級再加大。
+其他設備：
+- 小便斗數量（含感應器或指壓）
+- 浴缸數量
+- 無框淋浴拉門數量
+  - 一字形 / 五角型 / L型
+- 扶手數量 / 尺寸（公分）
 
 ## 檔名規則
-維持固定四檔：
+固定四檔：
 - index.html
 - style.css
 - app.js
 - README.md
 
 快取用 query string：
-- style.css?v=202607301029
-- app.js?v=202607301029
+- style.css?v=202607301055
+- app.js?v=202607301055

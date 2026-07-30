@@ -9,7 +9,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>凱撒衛浴選品試算工具</title>
-  <link rel="stylesheet" href="./style.css?v=202607301029" />
+  <link rel="stylesheet" href="./style.css?v=202607301055" />
 </head>
 <body>
   <header class="app-header">
@@ -49,109 +49,206 @@
 
       <div class="divider"></div>
 
-      <h3>基本品項</h3>
-      <div class="field-grid two">
-        <div class="qty-field item-qty-row">
-          <span>馬桶數量</span>
-          <div class="stepper" data-target="toiletQty">
-            <button type="button" class="step-btn minus" aria-label="馬桶數量減少">−</button>
-            <input autocomplete="off" id="toiletQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="馬桶數量增加">＋</button>
-          </div>
-        </div>
-        <div class="check-row sub-check item-sub-row">
-          <input autocomplete="off" id="includeBidetSeat" type="checkbox" />
-          <span>需要電腦馬桶座</span>
-        </div>
-        <label class="item-sub-row pipe-row">
-          <span>馬桶糞管距離</span>
-          <select id="toiletPipe">
-            <option value="unknown">不確定，先保留可用方案</option>
-            <option value="300">30cm</option>
-            <option value="400">40cm</option>
-          </select>
-        </label>
-        <div class="qty-field item-qty-row">
-          <span>面盆龍頭數量</span>
-          <div class="stepper" data-target="basinFaucetQty">
-            <button type="button" class="step-btn minus" aria-label="面盆龍頭數量減少">−</button>
-            <input autocomplete="off" id="basinFaucetQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="面盆龍頭數量增加">＋</button>
-          </div>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>沐浴龍頭數量</span>
-          <div class="stepper" data-target="showerFaucetQty">
-            <button type="button" class="step-btn minus" aria-label="沐浴龍頭數量減少">−</button>
-            <input autocomplete="off" id="showerFaucetQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="沐浴龍頭數量增加">＋</button>
-          </div>
-        </div>
-        <div class="check-row sub-check item-sub-row">
-          <input autocomplete="off" id="includeShowerSlider" type="checkbox" />
-          <span>搭配滑桿 / 蓮蓬頭</span>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>廚房龍頭數量</span>
-          <div class="stepper" data-target="kitchenFaucetQty">
-            <button type="button" class="step-btn minus" aria-label="廚房龍頭數量減少">−</button>
-            <input autocomplete="off" id="kitchenFaucetQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="廚房龍頭數量增加">＋</button>
-          </div>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>浴室配件數量</span>
-          <div class="stepper" data-target="bathAccessoryQty">
-            <button type="button" class="step-btn minus" aria-label="浴室配件數量減少">−</button>
-            <input autocomplete="off" id="bathAccessoryQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="浴室配件數量增加">＋</button>
-          </div>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>電熱毛巾架數量</span>
-          <div class="stepper" data-target="towelWarmerQty">
-            <button type="button" class="step-btn minus" aria-label="電熱毛巾架數量減少">−</button>
-            <input autocomplete="off" id="towelWarmerQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="電熱毛巾架數量增加">＋</button>
-          </div>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>浴室暖風機數量</span>
-          <div class="stepper" data-target="bathHeaterQty">
-            <button type="button" class="step-btn minus" aria-label="浴室暖風機數量減少">−</button>
-            <input autocomplete="off" id="bathHeaterQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="浴室暖風機數量增加">＋</button>
-          </div>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>浴缸數量</span>
-          <div class="stepper" data-target="bathtubQty">
-            <button type="button" class="step-btn minus" aria-label="浴缸數量減少">−</button>
-            <input autocomplete="off" id="bathtubQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="浴缸數量增加">＋</button>
-          </div>
-        </div>
-        <div class="qty-field item-qty-row">
-          <span>扶手 / 無障礙配件數量</span>
-          <div class="stepper" data-target="grabBarQty">
-            <button type="button" class="step-btn minus" aria-label="扶手 / 無障礙配件數量減少">−</button>
-            <input autocomplete="off" id="grabBarQty" type="number" min="0" value="0" readonly />
-            <button type="button" class="step-btn plus" aria-label="扶手 / 無障礙配件數量增加">＋</button>
-          </div>
-        </div>
-      </div>
+      
+<h3>基本品項</h3>
 
-      <div class="divider"></div>
+<div class="selection-group">
+  <div class="selection-row">
+    <span>馬桶數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="toiletQty">−</button>
+      <input autocomplete="off" id="toiletQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="toiletQty">＋</button>
+    </div>
+  </div>
+  <label class="sub-option">
+    <input id="includeBidetSeat" type="checkbox" />
+    <span>需要電腦馬桶座</span>
+  </label>
+  <div class="sub-option sub-option-grid">
+    <span>馬桶糞管距離</span>
+    <label><input type="checkbox" name="toiletPipeCheck" value="300" /> 30</label>
+    <label><input type="checkbox" name="toiletPipeCheck" value="400" /> 40</label>
+  </div>
+</div>
 
-      <h3>浴櫃 / 臉盆組</h3>
-      <div id="vanityRows" class="repeat-list"></div>
-      <button class="ghost" type="button" data-add-row="vanity">＋新增浴櫃需求</button>
+<div class="selection-group">
+  <div class="group-title">浴櫃 / 臉盆組</div>
+  <div id="vanityRows" class="demand-rows"></div>
+  <button class="secondary full" id="addVanityRow" type="button">＋ 新增尺寸</button>
+</div>
 
-      <h3>鏡櫃 / 鏡子</h3>
-      <div id="mirrorRows" class="repeat-list"></div>
-      <button class="ghost" type="button" data-add-row="mirror">＋新增鏡櫃需求</button>
+<div class="selection-group">
+  <div class="selection-row">
+    <span>面盆龍頭數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="basinFaucetQty">−</button>
+      <input autocomplete="off" id="basinFaucetQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="basinFaucetQty">＋</button>
+    </div>
+  </div>
+</div>
 
-      <button id="runButton" class="primary" type="button">產生選品試算</button>
+<div class="selection-group">
+  <div class="selection-row">
+    <span>沐浴龍頭數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="showerFaucetQty">−</button>
+      <input autocomplete="off" id="showerFaucetQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="showerFaucetQty">＋</button>
+    </div>
+  </div>
+  <label class="sub-option">
+    <input id="includeShowerSlider" type="checkbox" />
+    <span>搭配滑桿 / 蓮蓬頭</span>
+  </label>
+</div>
+
+<div class="selection-group">
+  <div class="selection-row">
+    <span>廚房龍頭數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="kitchenFaucetQty">−</button>
+      <input autocomplete="off" id="kitchenFaucetQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="kitchenFaucetQty">＋</button>
+    </div>
+  </div>
+</div>
+
+<h3>浴室配件</h3>
+
+<div class="selection-group">
+  <div class="selection-row">
+    <span>毛巾架數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="towelRackQty">−</button>
+      <input autocomplete="off" id="towelRackQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="towelRackQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>置物架數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="shelfQty">−</button>
+      <input autocomplete="off" id="shelfQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="shelfQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>掛衣勾數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="hookQty">−</button>
+      <input autocomplete="off" id="hookQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="hookQty">＋</button>
+    </div>
+  </div>
+</div>
+
+<h3>機能電器</h3>
+
+<div class="selection-group">
+  <div class="selection-row">
+    <span>抽風扇數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="exhaustFanQty">−</button>
+      <input autocomplete="off" id="exhaustFanQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="exhaustFanQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>浴室暖風機數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="bathHeaterQty">−</button>
+      <input autocomplete="off" id="bathHeaterQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="bathHeaterQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>電熱毛巾架數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="towelWarmerQty">−</button>
+      <input autocomplete="off" id="towelWarmerQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="towelWarmerQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>電動曬衣架數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="electricClothesRackQty">−</button>
+      <input autocomplete="off" id="electricClothesRackQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="electricClothesRackQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>烘手機數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="handDryerQty">−</button>
+      <input autocomplete="off" id="handDryerQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="handDryerQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>電能熱水器數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="electricWaterHeaterQty">−</button>
+      <input autocomplete="off" id="electricWaterHeaterQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="electricWaterHeaterQty">＋</button>
+    </div>
+  </div>
+</div>
+
+<h3>其他設備</h3>
+
+<div class="selection-group">
+  <div class="selection-row">
+    <span>小便斗數量（含感應器或指壓）</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="urinalQty">−</button>
+      <input autocomplete="off" id="urinalQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="urinalQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>浴缸數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="bathtubQty">−</button>
+      <input autocomplete="off" id="bathtubQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="bathtubQty">＋</button>
+    </div>
+  </div>
+  <div class="selection-row">
+    <span>無框淋浴拉門數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="showerDoorQty">−</button>
+      <input autocomplete="off" id="showerDoorQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="showerDoorQty">＋</button>
+    </div>
+  </div>
+  <div class="sub-option sub-option-grid door-options">
+    <span>拉門型式</span>
+    <label><input type="checkbox" name="showerDoorType" value="一字形" /> 一字形</label>
+    <label><input type="checkbox" name="showerDoorType" value="五角型" /> 五角型</label>
+    <label><input type="checkbox" name="showerDoorType" value="L型" /> L型</label>
+  </div>
+</div>
+
+<div class="selection-group">
+  <div class="selection-row">
+    <span>扶手數量</span>
+    <div class="stepper">
+      <button type="button" data-step="-1" data-target="grabBarQty">−</button>
+      <input autocomplete="off" id="grabBarQty" type="number" min="0" value="0" inputmode="numeric" />
+      <button type="button" data-step="1" data-target="grabBarQty">＋</button>
+    </div>
+  </div>
+  <label class="inline-field sub-option">
+    <span>尺寸（公分）</span>
+    <input autocomplete="off" id="grabBarWidthCm" type="number" min="0" placeholder="例如 60" inputmode="numeric" />
+  </label>
+</div>
+
+
+<button id="runButton" class="primary" type="button">產生選品試算</button>
       <p id="statusText" class="status">資料載入中。</p>
     </section>
 
@@ -201,6 +298,6 @@
     </div>
   </template>
 
-  <script src="./app.js?v=202607301029"></script>
+  <script src="./app.js?v=202607301055"></script>
 </body>
 </html>
