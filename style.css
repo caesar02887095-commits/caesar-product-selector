@@ -1031,3 +1031,12 @@ button:active,
 .product-alternatives button {
   white-space: nowrap;
 }
+
+
+/* v36: 手動改選後仍保留替代選項入口 */
+.manual-selected-note {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 8px 0 6px;
+  opacity: 0.72;
+}

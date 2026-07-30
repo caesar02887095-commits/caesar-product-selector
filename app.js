@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301337";
+const APP_VERSION = "202607301405";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -223,7 +223,8 @@ function selectDefaultItems(demandCandidates) {
 function selectBudgetAwareItems(demandCandidates, discount, budget) {
   const prepared = demandCandidates.map(({ demand, candidates }) => {
     const savedKey = selectedModelByDemandId.get(demand.id);
-    let mapped = candidates
+
+    const mapped = candidates
       .filter((p) => p.listPrice > 0)
       .map((p) => ({
         ...p,
@@ -232,28 +233,35 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
         budgetScore: scoreCandidateForBudget(p, demand)
       }));
 
-    const forced = savedKey ? mapped.find((p) => getProductKey(p) === savedKey) : null;
+    const sortedCandidates = mapped
+      .sort((a, b) => {
+        if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
+        if (b.budgetScore !== a.budgetScore) return b.budgetScore - a.budgetScore;
+        return a.listPrice - b.listPrice;
+      })
+      .slice(0, 260);
 
-    if (forced) {
-      mapped = [{ ...forced, isForcedSelection: true }];
-    } else {
-      mapped = mapped
-        .sort((a, b) => {
-          if ((a.widthDelta ?? 9999) !== (b.widthDelta ?? 9999)) return (a.widthDelta ?? 9999) - (b.widthDelta ?? 9999);
-          if (b.budgetScore !== a.budgetScore) return b.budgetScore - a.budgetScore;
-          return a.listPrice - b.listPrice;
-        })
-        .slice(0, 260);
-    }
+    const forced = savedKey ? sortedCandidates.find((p) => getProductKey(p) === savedKey) : null;
 
-    return { demand, candidates: mapped };
+    // v36 重點：
+    // 手動改選只固定「主選品」，但 candidates 必須保留完整候選清單。
+    // 否則改選後 buildAltSection 會因 candidates 只剩一筆而整段替代按鈕消失。
+    const candidatesForBudget = forced
+      ? [{ ...forced, isForcedSelection: true }]
+      : sortedCandidates;
+
+    return {
+      demand,
+      candidates: candidatesForBudget,
+      allCandidates: sortedCandidates
+    };
   });
 
   if (prepared.some((group) => !group.candidates.length)) {
-    return prepared.map(({ demand, candidates }) => ({
+    return prepared.map(({ demand, candidates, allCandidates }) => ({
       missing: true,
       demand,
-      candidates
+      candidates: allCandidates && allCandidates.length ? allCandidates : candidates
     }));
   }
 
@@ -263,14 +271,17 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   }, 0);
 
   if (minPossible > budget) {
-    return prepared.map(({ demand, candidates }) => {
+    return prepared.map(({ demand, candidates, allCandidates }) => {
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
-      return { ...cheapest, demand, candidates, budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用" };
+      return {
+        ...cheapest,
+        demand,
+        candidates: allCandidates && allCandidates.length ? allCandidates : candidates,
+        budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用"
+      };
     });
   }
 
-  // Multiple-choice knapsack:
-  // 每個需求選一個品項，找出不超過預算且總價最接近預算的組合。
   let states = new Map();
   states.set(0, { total: 0, score: 0, picks: [] });
 
@@ -289,7 +300,14 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
           next.set(total, {
             total,
             score,
-            picks: [...state.picks, { ...item, demand: group.demand, candidates: group.candidates }]
+            picks: [
+              ...state.picks,
+              {
+                ...item,
+                demand: group.demand,
+                candidates: group.allCandidates && group.allCandidates.length ? group.allCandidates : group.candidates
+              }
+            ]
           });
         }
       }
@@ -299,9 +317,14 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   }
 
   if (!states.size) {
-    return prepared.map(({ demand, candidates }) => {
+    return prepared.map(({ demand, candidates, allCandidates }) => {
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
-      return { ...cheapest, demand, candidates, budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用" };
+      return {
+        ...cheapest,
+        demand,
+        candidates: allCandidates && allCandidates.length ? allCandidates : candidates,
+        budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用"
+      };
     });
   }
 
@@ -312,7 +335,10 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
     return b.score - a.score;
   })[0];
 
-  return best.picks.map((item) => ({ ...item, budgetReason: item.isForcedSelection ? "手動改選" : "預算匹配" }));
+  return best.picks.map((item) => ({
+    ...item,
+    budgetReason: item.isForcedSelection ? "手動改選" : "預算匹配"
+  }));
 }
 
 function pruneBudgetStates(states, budget, limit) {
@@ -829,29 +855,30 @@ function createProductCard(product, qty, discount, discountedUnit, subtotalDisco
 }
 
 function buildAltSection(product, qty, discount) {
-  const alternatives = (product.candidates || []).filter((p) => getProductKey(p) !== getProductKey(product)).slice(0, 10);
-  if (!alternatives.length) return "";
+  const fullCandidates = product.candidates || [];
+  const alternatives = fullCandidates
+    .filter((p) => getProductKey(p) !== getProductKey(product))
+    .slice(0, 10);
 
-  const currentDiscounted = Math.round(product.listPrice * discount / 100);
+  const currentLabel = product.isForcedSelection
+    ? `<div class="manual-selected-note">目前為手動改選，仍可再改其他型號。</div>`
+    : "";
+
+  if (!alternatives.length) {
+    return currentLabel;
+  }
 
   const items = alternatives.map((alt) => {
     const altDiscounted = Math.round(alt.listPrice * discount / 100);
-    const diff = (altDiscounted - currentDiscounted) * qty;
-    const diffText = diff >= 0 ? `+${money(diff)}` : `-${money(Math.abs(diff))}`;
-    const url = alt.officialUrl || buildCaesarProductUrl(alt.model);
-    const altPreviewUrl = alt.imageUrl;
-    const thumb = altPreviewUrl
-      ? `<img src="${escapeAttr(altPreviewUrl)}" alt="${escapeAttr(alt.model)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none;">無圖</span>`
-      : `<span>無圖</span>`;
-    const combo = alt.isCombo ? `<small>組合寬度：${alt.width}mm</small>` : `<small>${escapeHtml(alt.features || "")}</small>`;
+    const currentDiscounted = Math.round(product.listPrice * discount / 100);
+    const diff = altDiscounted - currentDiscounted;
+    const diffText = diff === 0 ? "相同" : `${diff > 0 ? "+" : "-"}${money(Math.abs(diff))}`;
 
     return `
       <div class="alt-item">
-        <a class="alt-thumb" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">${thumb}</a>
-        <div class="alt-info">
+        <div>
           <strong>${escapeHtml(alt.model)}</strong>
-          <div>${escapeHtml(alt.name)}</div>
-          ${combo}
+          <span>${escapeHtml(alt.name || "")}</span>
         </div>
         <div class="alt-action">
           <div>${money(altDiscounted)} / 件</div>
@@ -862,7 +889,7 @@ function buildAltSection(product, qty, discount) {
     `;
   }).join("");
 
-  return `<button class="alt-toggle" type="button">展開其他可選型號</button><div class="alt-list">${items}</div>`;
+  return `${currentLabel}<button class="alt-toggle" type="button">展開其他可選型號</button><div class="alt-list">${items}</div>`;
 }
 
 
