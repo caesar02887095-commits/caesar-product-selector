@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301634";
+const APP_VERSION = "202607301652";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -258,9 +258,6 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
 
     const forced = savedKey ? sortedCandidates.find((p) => getProductKey(p) === savedKey) : null;
 
-    // v36 重點：
-    // 手動改選只固定「主選品」，但 candidates 必須保留完整候選清單。
-    // 否則改選後 buildAltSection 會因 candidates 只剩一筆而整段替代按鈕消失。
     const candidatesForBudget = forced
       ? [{ ...forced, isForcedSelection: true }]
       : sortedCandidates;
@@ -272,21 +269,32 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
     };
   });
 
-  if (prepared.some((group) => !group.candidates.length)) {
-    return prepared.map(({ demand, candidates, allCandidates }) => ({
-      missing: true,
-      demand,
-      candidates: allCandidates && allCandidates.length ? allCandidates : candidates
-    }));
+  const missingGroups = prepared.filter((group) => !group.candidates.length);
+  const activeGroups = prepared.filter((group) => group.candidates.length);
+
+  const buildMissingItems = () => missingGroups.map(({ demand, allCandidates, candidates }) => ({
+    missing: true,
+    demand,
+    candidates: allCandidates && allCandidates.length ? allCandidates : candidates
+  }));
+
+  const mergeByDemandOrder = (picked) => {
+    const pickedByDemandId = new Map(picked.map((item) => [item.demand.id, item]));
+    const missingByDemandId = new Map(buildMissingItems().map((item) => [item.demand.id, item]));
+    return prepared.map((group) => pickedByDemandId.get(group.demand.id) || missingByDemandId.get(group.demand.id)).filter(Boolean);
+  };
+
+  if (!activeGroups.length) {
+    return buildMissingItems();
   }
 
-  const minPossible = prepared.reduce((sum, group) => {
+  const minPossible = activeGroups.reduce((sum, group) => {
     const minItem = group.candidates.reduce((best, item) => item.subtotal < best.subtotal ? item : best, group.candidates[0]);
     return sum + minItem.subtotal;
   }, 0);
 
   if (minPossible > budget) {
-    return prepared.map(({ demand, candidates, allCandidates }) => {
+    const picked = activeGroups.map(({ demand, candidates, allCandidates }) => {
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
       return {
         ...cheapest,
@@ -295,12 +303,13 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
         budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用"
       };
     });
+    return mergeByDemandOrder(picked);
   }
 
   let states = new Map();
   states.set(0, { total: 0, score: 0, picks: [] });
 
-  for (const group of prepared) {
+  for (const group of activeGroups) {
     const next = new Map();
 
     for (const state of states.values()) {
@@ -332,7 +341,7 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   }
 
   if (!states.size) {
-    return prepared.map(({ demand, candidates, allCandidates }) => {
+    const picked = activeGroups.map(({ demand, candidates, allCandidates }) => {
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
       return {
         ...cheapest,
@@ -341,6 +350,7 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
         budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用"
       };
     });
+    return mergeByDemandOrder(picked);
   }
 
   const best = [...states.values()].sort((a, b) => {
@@ -350,10 +360,12 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
     return b.score - a.score;
   })[0];
 
-  return best.picks.map((item) => ({
+  const picked = best.picks.map((item) => ({
     ...item,
     budgetReason: item.isForcedSelection ? "手動改選" : "預算匹配"
   }));
+
+  return mergeByDemandOrder(picked);
 }
 
 function pruneBudgetStates(states, budget, limit) {
@@ -826,6 +838,7 @@ function ensureLinkedBidetSeatSelection(demandCandidates) {
   if (!selectedToilet) {
     selectedModelByDemandId.delete("bidetSeat-toilet");
     bidetEntry.candidates = [];
+    bidetEntry.demand.missingReason = "目前沒有可用馬桶，無法判斷電腦馬桶蓋適裝。";
     return;
   }
 
@@ -833,15 +846,18 @@ function ensureLinkedBidetSeatSelection(demandCandidates) {
 
   const currentSeat = getSelectedProductByDemandId(selectedModelByDemandId, "bidetSeat-toilet", demandCandidates);
   if (currentSeat && isBidetSeatCompatibleWithToilet(currentSeat, selectedToilet)) {
+    delete bidetEntry.demand.missingReason;
     return;
   }
 
   if (bidetEntry.candidates.length) {
     selectedModelByDemandId.set("bidetSeat-toilet", getProductKey(bidetEntry.candidates[0]));
+    delete bidetEntry.demand.missingReason;
     window.__lastAutoAdjustNotice = "已因馬桶型號變更，自動調整電腦馬桶蓋適裝款。";
   } else {
     selectedModelByDemandId.delete("bidetSeat-toilet");
-    window.__lastAutoAdjustNotice = "此馬桶目前不建議搭配電腦馬桶蓋，請改選其他馬桶或取消電腦馬桶蓋需求。";
+    bidetEntry.demand.missingReason = "此馬桶目前不建議搭配電腦馬桶蓋，請改選其他馬桶或取消電腦馬桶蓋需求。";
+    window.__lastAutoAdjustNotice = bidetEntry.demand.missingReason;
   }
 }
 
@@ -947,13 +963,14 @@ function drawResults(selected, discount, budget) {
     if (item.missing) {
       const block = document.createElement("div");
       block.className = "product-card missing-card";
+      const reason = item.demand.missingReason || "目前產品資料表沒有找到可對應的類別或品項。請先補 PRODUCT_MASTER 類別，或調整 CATEGORY_MAP。";
       block.innerHTML = `
         <div class="product-img missing-img">無資料</div>
         <div class="product-main">
           <div class="product-title-row">
             <p class="model">${escapeHtml(item.demand.label)}</p>
           </div>
-          <p class="tags">目前產品資料表沒有找到可對應的類別或品項。請先補 PRODUCT_MASTER 類別，或調整 CATEGORY_MAP。</p>
+          <p class="tags">${escapeHtml(reason)}</p>
         </div>
       `;
       els.resultList.appendChild(block);
