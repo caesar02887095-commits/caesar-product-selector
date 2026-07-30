@@ -1,16 +1,62 @@
 
-const APP_VERSION = "202607300957";
+const APP_VERSION = "202607301014";
 
-// 每次進入頁面都清除本工具可能殘留的舊版暫存狀態。
-// 不清 Sheet 資料，只清前端記住的舊選擇。
-try {
-  Object.keys(localStorage || {}).forEach((key) => {
-    if (/caesar|selector|product/i.test(key)) localStorage.removeItem(key);
+function forceInitialDefaults() {
+  const discount = document.getElementById("discount");
+  if (discount) discount.value = "45";
+
+  document.querySelectorAll(".qty-input").forEach((input) => {
+    input.value = "0";
   });
-  sessionStorage.setItem("caesarSelectorVersion", APP_VERSION);
-} catch (error) {
-  // ignore storage errors
+
+  document.querySelectorAll(".item-sub-row input[type='checkbox']").forEach((checkbox) => {
+    checkbox.checked = false;
+  });
 }
+
+function getQuantityFromItemRow(row) {
+  const input = row ? row.querySelector(".qty-input, input[type='number'], input") : null;
+  const value = Number(input && input.value ? input.value : 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function refreshConditionalOptionVisibility() {
+  document.querySelectorAll(".item-qty-row").forEach((row) => {
+    const qty = getQuantityFromItemRow(row);
+    let next = row.nextElementSibling;
+
+    while (next && next.classList && next.classList.contains("item-sub-row")) {
+      const shouldShow = qty > 0;
+      next.hidden = !shouldShow;
+      next.style.display = shouldShow ? "" : "none";
+      next.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+
+      if (!shouldShow) {
+        next.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+          checkbox.checked = false;
+        });
+      }
+
+      next = next.nextElementSibling;
+    }
+  });
+}
+
+function initializePageState() {
+  try {
+    Object.keys(localStorage || {}).forEach((key) => {
+      if (/caesar|selector|product/i.test(key)) localStorage.removeItem(key);
+    });
+    sessionStorage.setItem("caesarSelectorVersion", APP_VERSION);
+  } catch (error) {
+    // ignore storage errors
+  }
+
+  forceInitialDefaults();
+  refreshConditionalOptionVisibility();
+}
+
+
 
 const PRODUCT_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTntfwmNxwhqWVrPsU4sxhBHfDmvDOMSjjBXySgpOeaZLxdT7lsX6RfjrPgZbiV0N9QXSN_xRy5nWjD/pub?gid=0&single=true&output=csv";
 
@@ -158,6 +204,38 @@ window.addEventListener("pageshow", () => {
 });
 
 refreshConditionalOptionVisibility();
+
+document.addEventListener("DOMContentLoaded", () => {
+  initializePageState();
+});
+
+window.addEventListener("pageshow", () => {
+  initializePageState();
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!target || !target.closest) return;
+  if (target.closest(".stepper") || target.closest(".item-qty-row")) {
+    setTimeout(refreshConditionalOptionVisibility, 0);
+  }
+});
+
+document.addEventListener("input", (event) => {
+  const target = event.target;
+  if (target && target.closest && target.closest(".item-qty-row")) {
+    refreshConditionalOptionVisibility();
+  }
+});
+
+document.addEventListener("change", (event) => {
+  const target = event.target;
+  if (target && target.closest && target.closest(".item-qty-row")) {
+    refreshConditionalOptionVisibility();
+  }
+});
+
+initializePageState();
 loadProducts();
 });
 
@@ -230,35 +308,6 @@ function normalizeWidthInputToMm(value) {
   if (!Number.isFinite(n) || n <= 0) return 0;
   // 畫面輸入採 cm；若舊資料或使用者輸入 600 以上，視為已經是 mm。
   return n >= 300 ? Math.round(n) : Math.round(n * 10);
-}
-
-
-function getQuantityFromItemRow(row) {
-  const input = row ? row.querySelector("input") : null;
-  const value = Number(input && input.value ? input.value : 0);
-  return Number.isFinite(value) ? value : 0;
-}
-
-function refreshConditionalOptionVisibility() {
-  document.querySelectorAll(".item-qty-row").forEach((row) => {
-    const qty = getQuantityFromItemRow(row);
-    let next = row.nextElementSibling;
-
-    while (next && next.classList && next.classList.contains("item-sub-row")) {
-      const shouldShow = qty > 0;
-      next.hidden = !shouldShow;
-      next.style.display = shouldShow ? "" : "none";
-      next.setAttribute("aria-hidden", shouldShow ? "false" : "true");
-
-      if (!shouldShow) {
-        next.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-          checkbox.checked = false;
-        });
-      }
-
-      next = next.nextElementSibling;
-    }
-  });
 }
 
 

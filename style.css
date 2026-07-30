@@ -564,3 +564,66 @@ section {
     gap: 6px !important;
   }
 }
+
+
+/* v25: 強制初始化後的左側欄位字級與收合 */
+.item-sub-row[hidden],
+.item-sub-row[aria-hidden="true"] {
+  display: none !important;
+}
+
+.condition-panel,
+.form-card,
+.input-card {
+  font-size: 16px;
+}
+
+.item-qty-row > span {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+}
+
+.item-sub-row,
+.item-sub-row span,
+.pipe-row span,
+.check-row.item-sub-row {
+  font-size: 15px !important;
+  line-height: 1.45 !important;
+}
+
+.pipe-row select,
+.condition-panel select,
+.condition-panel input,
+.form-card select,
+.form-card input {
+  font-size: 15px !important;
+}
+
+.stepper button {
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+
+.stepper input {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 640px) {
+  .condition-panel,
+  .form-card,
+  .input-card {
+    font-size: 16px;
+  }
+
+  .item-qty-row > span {
+    font-size: 16px !important;
+  }
+
+  .item-sub-row,
+  .item-sub-row span,
+  .pipe-row span {
+    font-size: 15px !important;
+  }
+}
