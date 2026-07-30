@@ -272,3 +272,93 @@ section {
     gap: 6px;
   }
 }
+
+
+/* v22: 修正外層 field-grid two 仍造成附加選項排到右欄的問題 */
+/* 只要這個區塊內有數量列，就改成單欄群組排列 */
+.field-grid.two:has(.item-qty-row),
+.field-grid:has(.item-qty-row) {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 0 !important;
+}
+
+/* 每一個品項數量列：左側名稱，右側 - 數量 + */
+.field-grid:has(.item-qty-row) .item-qty-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 124px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+}
+
+.field-grid:has(.item-qty-row) .item-qty-row > span {
+  min-width: 0 !important;
+  font-weight: 700 !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* stepper 固定在右邊，不撐出格子 */
+.field-grid:has(.item-qty-row) .stepper {
+  width: 124px !important;
+  min-width: 124px !important;
+  max-width: 124px !important;
+  justify-self: end !important;
+  box-sizing: border-box !important;
+}
+
+/* 額外勾選與附加規格固定在品項下一列 */
+.field-grid:has(.item-qty-row) .item-sub-row {
+  display: flex !important;
+  width: calc(100% - 12px) !important;
+  max-width: calc(100% - 12px) !important;
+  margin-top: 6px !important;
+  margin-left: 12px !important;
+  padding-left: 10px !important;
+  box-sizing: border-box !important;
+  border-left: 3px solid rgba(120, 120, 120, 0.18) !important;
+}
+
+/* 馬桶糞管距離是附加規格，也在下一列 */
+.field-grid:has(.item-qty-row) .pipe-row {
+  display: grid !important;
+  grid-template-columns: 110px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.field-grid:has(.item-qty-row) .pipe-row select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 640px) {
+  .field-grid:has(.item-qty-row) .item-qty-row {
+    grid-template-columns: minmax(0, 1fr) 112px !important;
+    gap: 8px !important;
+  }
+
+  .field-grid:has(.item-qty-row) .stepper {
+    width: 112px !important;
+    min-width: 112px !important;
+    max-width: 112px !important;
+  }
+
+  .field-grid:has(.item-qty-row) .item-sub-row {
+    width: calc(100% - 8px) !important;
+    max-width: calc(100% - 8px) !important;
+    margin-left: 8px !important;
+    padding-left: 8px !important;
+  }
+
+  .field-grid:has(.item-qty-row) .pipe-row {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+}
