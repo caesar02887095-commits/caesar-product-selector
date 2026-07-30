@@ -799,3 +799,209 @@ section {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v29: 左側需求區壓縮，修正 checkbox 被撐大與無用空間過多 */
+.controls h3 {
+  margin: 16px 0 8px !important;
+  font-size: 18px !important;
+}
+
+.selection-group {
+  padding: 9px 10px !important;
+  margin: 8px 0 10px !important;
+  border-radius: 10px !important;
+}
+
+.group-title {
+  font-size: 15.5px !important;
+  margin-bottom: 5px !important;
+}
+
+.selection-row {
+  grid-template-columns: minmax(0, 1fr) 116px !important;
+  gap: 8px !important;
+  margin: 6px 0 !important;
+  min-height: 38px !important;
+}
+
+.selection-row > span {
+  font-size: 15.5px !important;
+  line-height: 1.25 !important;
+}
+
+.selection-row .stepper {
+  width: 116px !important;
+  grid-template-columns: 32px minmax(36px, 1fr) 32px !important;
+  gap: 5px !important;
+}
+
+.selection-row .stepper button {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 !important;
+  font-size: 19px !important;
+  border-radius: 9px !important;
+}
+
+.selection-row .stepper input {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 4px !important;
+  font-size: 16px !important;
+  border-radius: 9px !important;
+}
+
+/* 附屬選項改成緊湊列，不再像大卡片 */
+.sub-option {
+  margin: 5px 0 0 8px !important;
+  padding: 5px 8px !important;
+  min-height: 32px !important;
+  border-left: 2px solid rgba(120, 120, 120, 0.22) !important;
+  border-radius: 6px !important;
+  background: rgba(0, 0, 0, 0.01) !important;
+  font-size: 14.5px !important;
+  line-height: 1.25 !important;
+}
+
+/* 重要：checkbox 不可被一般 input 寬度規則撐大 */
+.sub-option input[type="checkbox"],
+.selection-group input[type="checkbox"],
+.controls input[type="checkbox"] {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  min-height: 16px !important;
+  max-height: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 0 0 16px !important;
+  box-sizing: border-box !important;
+}
+
+/* 馬桶管距列：文字 + 30 + 40 緊湊排列 */
+.sub-option-grid {
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+.sub-option-grid label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  font-size: 14.5px !important;
+}
+
+.door-options {
+  grid-template-columns: minmax(0, 1fr) auto auto auto !important;
+}
+
+.demand-rows {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.demand-row {
+  grid-template-columns: minmax(62px, 0.8fr) minmax(86px, 1fr) auto !important;
+  gap: 6px !important;
+  margin: 5px 0 !important;
+}
+
+.demand-row label,
+.demand-row span {
+  font-size: 14px !important;
+}
+
+.demand-row input {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  font-size: 15px !important;
+}
+
+.demand-row .danger,
+.demand-row button {
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  font-size: 14px !important;
+}
+
+.secondary.full {
+  min-height: 38px !important;
+  margin-top: 7px !important;
+  padding: 0 12px !important;
+  border-radius: 9px !important;
+  font-size: 15px !important;
+}
+
+/* 條件輸入上方也略壓縮 */
+.field-grid,
+.field-grid.two {
+  gap: 8px !important;
+}
+
+.controls input,
+.controls select {
+  min-height: 38px;
+}
+
+@media (max-width: 640px) {
+  .selection-group {
+    padding: 8px 9px !important;
+    margin: 7px 0 9px !important;
+  }
+
+  .selection-row {
+    grid-template-columns: minmax(0, 1fr) 110px !important;
+    gap: 7px !important;
+    min-height: 36px !important;
+  }
+
+  .selection-row .stepper {
+    width: 110px !important;
+    grid-template-columns: 30px minmax(34px, 1fr) 30px !important;
+    gap: 5px !important;
+  }
+
+  .selection-row .stepper button,
+  .selection-row .stepper input {
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+
+  .sub-option {
+    margin-left: 6px !important;
+    padding: 5px 7px !important;
+    font-size: 14px !important;
+  }
+
+  .sub-option-grid,
+  .door-options {
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+  }
+
+  .door-options {
+    grid-template-columns: 1fr auto auto !important;
+  }
+
+  .door-options label:last-child {
+    grid-column: 2 / span 2;
+  }
+
+  .demand-row {
+    grid-template-columns: minmax(58px, 0.8fr) minmax(78px, 1fr) auto !important;
+    gap: 5px !important;
+  }
+
+  .demand-row input,
+  .demand-row .danger,
+  .demand-row button {
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+}

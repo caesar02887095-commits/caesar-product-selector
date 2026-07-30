@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301055";
+const APP_VERSION = "202607301110";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
