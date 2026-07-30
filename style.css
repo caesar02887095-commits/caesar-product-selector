@@ -174,3 +174,101 @@ section {
     padding-left: 8px;
   }
 }
+
+
+/* v21: 品項群組版面
+   每個品項固定：
+   品項數量      - 數量 +
+   (額外勾選)
+   (額外勾選)
+*/
+.item-qty-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.item-qty-row > span {
+  min-width: 0;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.item-qty-row .stepper {
+  justify-self: end;
+  flex: none;
+  width: 124px;
+  min-width: 124px;
+  max-width: 124px;
+}
+
+.item-sub-row {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 10px);
+  max-width: calc(100% - 10px);
+  box-sizing: border-box;
+  margin-top: 6px;
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 3px solid rgba(120, 120, 120, 0.18);
+}
+
+.check-row.item-sub-row {
+  gap: 8px;
+}
+
+.pipe-row {
+  display: grid;
+  grid-template-columns: minmax(82px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.pipe-row span {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.pipe-row select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .item-qty-row {
+    grid-template-columns: minmax(0, 1fr) 112px;
+    column-gap: 8px;
+    margin-top: 12px;
+  }
+
+  .item-qty-row .stepper {
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+  }
+
+  .item-sub-row {
+    width: calc(100% - 8px);
+    max-width: calc(100% - 8px);
+    margin-left: 8px;
+    padding-left: 8px;
+  }
+
+  .pipe-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
