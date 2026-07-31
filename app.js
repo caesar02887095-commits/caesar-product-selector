@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607301652";
+const APP_VERSION = "202607311430";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -227,12 +227,30 @@ function renderEstimate() {
 }
 
 
+function isSuppressedDemand(demand, selectedItems) {
+  if (!demand || !selectedItems) return false;
+  return selectedItems.some((item) => Array.isArray(item.suppressesDemandIds) && item.suppressesDemandIds.includes(demand.id));
+}
+
+function buildSuppressedSetFromItems(items) {
+  const set = new Set();
+  (items || []).forEach((item) => {
+    (item.suppressesDemandIds || []).forEach((id) => set.add(id));
+  });
+  return set;
+}
+
 function selectDefaultItems(demandCandidates) {
-  return demandCandidates.map(({ demand, candidates }) => {
+  const selected = [];
+
+  for (const { demand, candidates } of demandCandidates) {
+    if (isSuppressedDemand(demand, selected)) continue;
     const savedKey = selectedModelByDemandId.get(demand.id);
     const chosen = candidates.find((p) => getProductKey(p) === savedKey) || candidates[0];
-    return chosen ? { ...chosen, demand, candidates } : { missing: true, demand, candidates: [] };
-  });
+    selected.push(chosen ? { ...chosen, demand, candidates } : { missing: true, demand, candidates: [] });
+  }
+
+  return selected;
 }
 
 function selectBudgetAwareItems(demandCandidates, discount, budget) {
@@ -272,58 +290,58 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   const missingGroups = prepared.filter((group) => !group.candidates.length);
   const activeGroups = prepared.filter((group) => group.candidates.length);
 
-  const buildMissingItems = () => missingGroups.map(({ demand, allCandidates, candidates }) => ({
-    missing: true,
-    demand,
-    candidates: allCandidates && allCandidates.length ? allCandidates : candidates
-  }));
+  const buildMissingItems = (suppressedSet = new Set()) => missingGroups
+    .filter(({ demand }) => !suppressedSet.has(demand.id))
+    .map(({ demand, allCandidates, candidates }) => ({
+      missing: true,
+      demand,
+      candidates: allCandidates && allCandidates.length ? allCandidates : candidates
+    }));
 
   const mergeByDemandOrder = (picked) => {
+    const suppressedSet = buildSuppressedSetFromItems(picked);
     const pickedByDemandId = new Map(picked.map((item) => [item.demand.id, item]));
-    const missingByDemandId = new Map(buildMissingItems().map((item) => [item.demand.id, item]));
-    return prepared.map((group) => pickedByDemandId.get(group.demand.id) || missingByDemandId.get(group.demand.id)).filter(Boolean);
+    const missingByDemandId = new Map(buildMissingItems(suppressedSet).map((item) => [item.demand.id, item]));
+    return prepared
+      .filter((group) => !suppressedSet.has(group.demand.id))
+      .map((group) => pickedByDemandId.get(group.demand.id) || missingByDemandId.get(group.demand.id))
+      .filter(Boolean);
   };
 
   if (!activeGroups.length) {
     return buildMissingItems();
   }
 
-  const minPossible = activeGroups.reduce((sum, group) => {
-    const minItem = group.candidates.reduce((best, item) => item.subtotal < best.subtotal ? item : best, group.candidates[0]);
-    return sum + minItem.subtotal;
-  }, 0);
-
-  if (minPossible > budget) {
-    const picked = activeGroups.map(({ demand, candidates, allCandidates }) => {
-      const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
-      return {
-        ...cheapest,
-        demand,
-        candidates: allCandidates && allCandidates.length ? allCandidates : candidates,
-        budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用"
-      };
-    });
-    return mergeByDemandOrder(picked);
-  }
-
   let states = new Map();
-  states.set(0, { total: 0, score: 0, picks: [] });
+  states.set("0|", { total: 0, score: 0, picks: [], suppressedDemandIds: new Set() });
 
   for (const group of activeGroups) {
     const next = new Map();
 
     for (const state of states.values()) {
+      if (state.suppressedDemandIds.has(group.demand.id)) {
+        const key = `${state.total}|${[...state.suppressedDemandIds].sort().join(",")}`;
+        const existing = next.get(key);
+        if (!existing || state.score > existing.score) next.set(key, state);
+        continue;
+      }
+
       for (const item of group.candidates) {
         const total = state.total + item.subtotal;
         if (total > budget) continue;
 
+        const suppressedDemandIds = new Set(state.suppressedDemandIds);
+        (item.suppressesDemandIds || []).forEach((id) => suppressedDemandIds.add(id));
+
         const score = state.score + item.budgetScore + (item.isForcedSelection ? 100000 : 0);
-        const existing = next.get(total);
+        const key = `${total}|${[...suppressedDemandIds].sort().join(",")}`;
+        const existing = next.get(key);
 
         if (!existing || score > existing.score) {
-          next.set(total, {
+          next.set(key, {
             total,
             score,
+            suppressedDemandIds,
             picks: [
               ...state.picks,
               {
@@ -341,15 +359,20 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   }
 
   if (!states.size) {
-    const picked = activeGroups.map(({ demand, candidates, allCandidates }) => {
+    const picked = [];
+    const suppressedSet = new Set();
+
+    for (const { demand, candidates, allCandidates } of activeGroups) {
+      if (suppressedSet.has(demand.id)) continue;
       const cheapest = [...candidates].sort((a, b) => a.subtotal - b.subtotal || b.budgetScore - a.budgetScore)[0];
-      return {
+      (cheapest.suppressesDemandIds || []).forEach((id) => suppressedSet.add(id));
+      picked.push({
         ...cheapest,
         demand,
         candidates: allCandidates && allCandidates.length ? allCandidates : candidates,
         budgetReason: cheapest.isForcedSelection ? "手動改選" : "最低可用"
-      };
-    });
+      });
+    }
     return mergeByDemandOrder(picked);
   }
 
@@ -369,17 +392,19 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
 }
 
 function pruneBudgetStates(states, budget, limit) {
-  const list = [...states.values()].sort((a, b) => {
-    const aGap = budget - a.total;
-    const bGap = budget - b.total;
+  const list = [...states.entries()].sort((a, b) => {
+    const stateA = a[1];
+    const stateB = b[1];
+    const aGap = budget - stateA.total;
+    const bGap = budget - stateB.total;
     if (aGap !== bGap) return aGap - bGap;
-    return b.score - a.score;
+    return stateB.score - stateA.score;
   });
 
   const keep = new Map();
 
-  for (const state of list) {
-    if (!keep.has(state.total)) keep.set(state.total, state);
+  for (const [key, state] of list) {
+    if (!keep.has(key)) keep.set(key, state);
     if (keep.size >= limit) break;
   }
 
@@ -401,10 +426,11 @@ function scoreCandidateForBudget(item, demand) {
   // 組合品項給小幅加分，讓鏡櫃組合有機會被選到。
   if (item.isCombo || String(item.category || "").includes("組合")) score += 300;
 
-  // 勾選電腦馬桶蓋時，優先一般馬桶 + 溫水洗淨便座。
-  // 智慧馬桶仍可被選到，但不應該壓過合理的馬桶座組合。
+  // 勾選電腦馬桶蓋時，智慧馬桶與一般馬桶+便座必須都能進入預算比較。
+  // 智慧馬桶若被選中，會抑制同組電腦馬桶蓋需求，不再額外加一張便座卡。
+  if (demand.allowSmartToilet && isSmartToiletProduct(item)) score += 3500;
   if (item.sourceType === "馬桶+便座") score += 2500;
-  if (item.sourceType === "智慧馬桶") score -= 800;
+  if (item.sourceType === "智慧馬桶") score += 1500;
   if (item.sourceType === "沐浴龍頭+滑桿" || item.sourceType === "沐浴龍頭含滑桿") score += 1200;
 
   return score;
@@ -442,10 +468,11 @@ function buildDemands() {
       demands.push({
         id: "toilet-toilet",
         type: "toilet",
-        label: "馬桶",
+        label: "馬桶 / 智慧馬桶",
         qty: toiletQty,
         groupId,
-        groupRole: "toilet"
+        groupRole: "toilet",
+        allowSmartToilet: true
       });
       demands.push({
         id: "bidetSeat-toilet",
@@ -842,6 +869,17 @@ function ensureLinkedBidetSeatSelection(demandCandidates) {
     return;
   }
 
+  if (isSmartToiletProduct(selectedToilet)) {
+    selectedToilet.suppressesDemandIds = ["bidetSeat-toilet"];
+    selectedToilet.features = `智慧馬桶｜不需另配電腦馬桶蓋｜${selectedToilet.features || ""}`;
+    selectedModelByDemandId.delete("bidetSeat-toilet");
+    bidetEntry.demand.isSuppressed = true;
+    bidetEntry.candidates = [];
+    delete bidetEntry.demand.missingReason;
+    return;
+  }
+
+  delete bidetEntry.demand.isSuppressed;
   bidetEntry.candidates = sortBidetSeatsForToilet(bidetEntry.candidates, selectedToilet);
 
   const currentSeat = getSelectedProductByDemandId(selectedModelByDemandId, "bidetSeat-toilet", demandCandidates);
@@ -875,6 +913,19 @@ function findSimpleCandidates(demand) {
 
   if (demand.type === "toilet") {
     candidates = candidates.filter(isToiletProduct);
+    if (demand.allowSmartToilet) {
+      const selectedPipe = getSelectedPipeDistance();
+      const smartCandidates = products
+        .filter((p) => p.visible !== false)
+        .filter(isSmartToiletProduct)
+        .filter((p) => supportsPipe(p, selectedPipe))
+        .map((p) => ({
+          ...p,
+          sourceType: "智慧馬桶",
+          suppressesDemandIds: ["bidetSeat-toilet"]
+        }));
+      candidates = [...candidates, ...smartCandidates];
+    }
   }
 
   if (demand.type === "smartToilet") {
@@ -953,13 +1004,15 @@ function drawResults(selected, discount, budget) {
   let totalList = 0;
   let totalDiscounted = 0;
 
-  if (!selected.length) {
+  const visibleSelected = selected.filter((item) => !(item.demand && item.demand.isSuppressed));
+
+  if (!visibleSelected.length) {
     els.resultList.innerHTML = `<div class="empty">沒有設定任何需求數量。</div>`;
     updateSummary(0, 0, budget);
     return;
   }
 
-  for (const item of selected) {
+  for (const item of visibleSelected) {
     if (item.missing) {
       const block = document.createElement("div");
       block.className = "product-card missing-card";
