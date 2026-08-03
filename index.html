@@ -9,7 +9,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>凱撒衛浴選品試算工具</title>
-  <link rel="stylesheet" href="./style.css?v=202607311430" />
+  <link rel="stylesheet" href="./style.css?v=202608031000" />
 </head>
 <body>
   <header class="app-header">
@@ -87,6 +87,14 @@
       <button type="button" data-step="1" data-target="basinFaucetQty">＋</button>
     </div>
   </div>
+  <label class="sub-option">
+    <span>面盆落水頭</span>
+    <select id="basinDrainMode">
+      <option value="standard">一般面盆｜搭 B 系列龍頭</option>
+      <option value="ceramicFixed">瓷蓋固定落水頭｜搭 BT 系列龍頭</option>
+      <option value="ceramicPopUp">彈跳瓷蓋落水頭 +900｜搭 BT 系列龍頭</option>
+    </select>
+  </label>
 </div>
 
 <div class="selection-group">
@@ -298,6 +306,6 @@
     </div>
   </template>
 
-  <script src="./app.js?v=202607311430"></script>
+  <script src="./app.js?v=202608031000"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 
-const APP_VERSION = "202607311430";
+const APP_VERSION = "202608030941";
 
 function forceInitialDefaults() {
   const discount = document.getElementById("discountInput");
@@ -81,6 +81,7 @@ const els = {
   toiletPipe: document.getElementById("toiletPipe"),
   includeShowerSlider: document.getElementById("includeShowerSlider"),
   basinFaucetQty: document.getElementById("basinFaucetQty"),
+  basinDrainMode: document.getElementById("basinDrainMode"),
   showerFaucetQty: document.getElementById("showerFaucetQty"),
   kitchenFaucetQty: document.getElementById("kitchenFaucetQty"),
   bathAccessoryQty: document.getElementById("bathAccessoryQty"),
@@ -130,6 +131,7 @@ async function loadProducts() {
     const csvText = await response.text();
     const rows = parseCSV(csvText);
     products = rows.map(normalizeProduct).filter((p) => p.visible);
+    assignAutoPriceBands(products);
     setStatus(`已載入 ${products.length} 筆可顯示產品。`);
   } catch (err) {
     console.error(err);
@@ -153,8 +155,89 @@ function normalizeProduct(row) {
     officialUrl: clean(row["官網URL"]),
     note: clean(row["備註"]),
     source: clean(row["來源頁"]),
-    pipeDistance: clean(row["糞管距離cm"])
+    pipeDistance: clean(row["糞管距離cm"]),
+    internalPriceBand: clamp(parseNumber(row["內部價格帶"]), 1, 5),
+    priceBandOverride: clean(row["價格帶修正"])
   };
+}
+
+function assignAutoPriceBands(productList) {
+  const groups = new Map();
+  productList.forEach((product) => {
+    if (!product || !product.category || !Number(product.listPrice)) return;
+    if (!groups.has(product.category)) groups.set(product.category, []);
+    groups.get(product.category).push(product);
+  });
+
+  groups.forEach((items) => {
+    const sorted = [...items].sort((a, b) => Number(a.listPrice || 0) - Number(b.listPrice || 0));
+    const count = sorted.length;
+    sorted.forEach((item, index) => {
+      if (item.internalPriceBand) return;
+      const band = count <= 1 ? 3 : Math.floor(index * 5 / count) + 1;
+      item.internalPriceBand = clamp(band, 1, 5);
+    });
+  });
+}
+
+function getEffectivePriceBand(product) {
+  if (!product) return 0;
+  let band = clamp(parseNumber(product.internalPriceBand), 1, 5);
+  const override = String(product.priceBandOverride || "");
+  if (!band) return 0;
+  if (override.includes("上修")) band += 1;
+  if (override.includes("下修")) band -= 1;
+  return clamp(band, 1, 5);
+}
+
+function getDemandBalanceRole(demand, item) {
+  const type = demand?.type || "";
+  if (["toilet", "smartToilet", "vanity", "bathtub", "urinal"].includes(type)) return "primary";
+  if (["bidetSeat", "basinFaucet", "showerFaucet", "showerSlider", "kitchenFaucet", "mirror", "bathAccessory", "grabBar", "towelWarmer", "bathHeater", "exhaustFan", "clothesRack", "handDryer", "waterHeater"].includes(type)) return "secondary";
+  if (item && isSmartToiletProduct(item)) return "primary";
+  return "neutral";
+}
+
+function averagePriceBand(bands) {
+  const list = (bands || []).filter((n) => Number.isFinite(n) && n > 0);
+  if (!list.length) return 0;
+  return list.reduce((sum, n) => sum + n, 0) / list.length;
+}
+
+function scorePriceBandHarmony(item, demand, state) {
+  if (item.isForcedSelection) return 0;
+  const band = getEffectivePriceBand(item);
+  if (!band) return 0;
+
+  const role = getDemandBalanceRole(demand, item);
+  const target = averagePriceBand(state.primaryBands);
+  if (!target) return 0;
+
+  const diff = Math.abs(band - target);
+  if (role === "secondary") {
+    if (diff <= 1) return 900;
+    return -4500 * Math.pow(diff - 1, 2);
+  }
+
+  if (role === "primary") {
+    if (diff <= 1.5) return 300;
+    return -1200 * Math.pow(diff - 1.5, 2);
+  }
+
+  return 0;
+}
+
+function nextPrimaryBands(state, demand, item) {
+  const band = getEffectivePriceBand(item);
+  if (!band) return state.primaryBands || [];
+  return getDemandBalanceRole(demand, item) === "primary"
+    ? [...(state.primaryBands || []), band]
+    : (state.primaryBands || []);
+}
+
+function budgetStateValue(state, budget) {
+  const gap = Math.max(0, Number(budget || 0) - Number(state.total || 0));
+  return Number(state.score || 0) - gap * 0.02;
 }
 
 function addDemandRow(type, defaults = {}) {
@@ -313,7 +396,7 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   }
 
   let states = new Map();
-  states.set("0|", { total: 0, score: 0, picks: [], suppressedDemandIds: new Set() });
+  states.set("0|", { total: 0, score: 0, picks: [], suppressedDemandIds: new Set(), primaryBands: [] });
 
   for (const group of activeGroups) {
     const next = new Map();
@@ -333,15 +416,18 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
         const suppressedDemandIds = new Set(state.suppressedDemandIds);
         (item.suppressesDemandIds || []).forEach((id) => suppressedDemandIds.add(id));
 
-        const score = state.score + item.budgetScore + (item.isForcedSelection ? 100000 : 0);
+        const harmonyScore = scorePriceBandHarmony(item, group.demand, state);
+        const score = state.score + item.budgetScore + harmonyScore + (item.isForcedSelection ? 100000 : 0);
+        const primaryBands = nextPrimaryBands(state, group.demand, item);
         const key = `${total}|${[...suppressedDemandIds].sort().join(",")}`;
         const existing = next.get(key);
 
-        if (!existing || score > existing.score) {
+        if (!existing || budgetStateValue({ total, score }, budget) > budgetStateValue(existing, budget)) {
           next.set(key, {
             total,
             score,
             suppressedDemandIds,
+            primaryBands,
             picks: [
               ...state.picks,
               {
@@ -377,10 +463,11 @@ function selectBudgetAwareItems(demandCandidates, discount, budget) {
   }
 
   const best = [...states.values()].sort((a, b) => {
+    const valueDiff = budgetStateValue(b, budget) - budgetStateValue(a, budget);
+    if (Math.abs(valueDiff) > 0.001) return valueDiff;
     const aGap = budget - a.total;
     const bGap = budget - b.total;
-    if (aGap !== bGap) return aGap - bGap;
-    return b.score - a.score;
+    return aGap - bGap;
   })[0];
 
   const picked = best.picks.map((item) => ({
@@ -395,10 +482,11 @@ function pruneBudgetStates(states, budget, limit) {
   const list = [...states.entries()].sort((a, b) => {
     const stateA = a[1];
     const stateB = b[1];
+    const valueDiff = budgetStateValue(stateB, budget) - budgetStateValue(stateA, budget);
+    if (Math.abs(valueDiff) > 0.001) return valueDiff;
     const aGap = budget - stateA.total;
     const bGap = budget - stateB.total;
-    if (aGap !== bGap) return aGap - bGap;
-    return stateB.score - stateA.score;
+    return aGap - bGap;
   });
 
   const keep = new Map();
@@ -416,6 +504,10 @@ function scoreCandidateForBudget(item, demand) {
 
   // 推薦排序仍保留，但不再凌駕於預算匹配。
   score += Math.max(0, 10000 - (item.sort || 9999));
+
+  // 內部價格帶只用於推薦平衡，不會顯示在畫面上。
+  const priceBand = getEffectivePriceBand(item);
+  if (priceBand) score += priceBand * 80;
 
   // 寬度越接近越好。
   score += Math.max(0, 1000 - (item.widthDelta ?? 9999)) * 2;
@@ -444,6 +536,101 @@ function sumSelectedSubtotal(selected, discount) {
   }, 0);
 }
 
+
+
+function getBasinDrainMode() {
+  return document.getElementById("basinDrainMode")?.value || "standard";
+}
+
+function getBasinDrainLabel(mode) {
+  if (mode === "ceramicFixed") return "瓷蓋固定落水頭（搭 BT 系列）";
+  if (mode === "ceramicPopUp") return "彈跳瓷蓋落水頭 +900（搭 BT 系列）";
+  return "一般面盆排桿（搭 B 系列）";
+}
+
+function isCeramicBasinDrainMode(mode) {
+  return mode === "ceramicFixed" || mode === "ceramicPopUp";
+}
+
+function splitModelAliases(model) {
+  return String(model || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function isBTBasinFaucetModel(model) {
+  return /^BT\d+/i.test(String(model || "").trim());
+}
+
+function isBBasinFaucetModel(model) {
+  return /^B\d+/i.test(String(model || "").trim()) && !isBTBasinFaucetModel(model);
+}
+
+function buildBasinFaucetVariants(candidates, demand) {
+  const mode = demand.basinDrainMode || "standard";
+  const needsBT = isCeramicBasinDrainMode(mode);
+  const variants = [];
+
+  candidates.forEach((product) => {
+    const aliases = splitModelAliases(product.model);
+    const targetAlias = aliases.find((model) => needsBT ? isBTBasinFaucetModel(model) : isBBasinFaucetModel(model));
+
+    if (targetAlias) {
+      variants.push({
+        ...product,
+        model: targetAlias,
+        originalModel: product.model,
+        sourceType: needsBT ? "BT面盆龍頭" : "B面盆龍頭",
+        features: `${needsBT ? "BT系列，不附落水頭，適用瓷蓋落水頭面盆" : "B系列，含一般落水頭/排桿，適用一般面盆"}｜${product.features || ""}`,
+        notes: `${product.notes || product.note || ""}｜由 ${product.model} 依面盆落水頭規則拆分顯示`.replace(/^｜/, "")
+      });
+      return;
+    }
+
+    const productIsBT = isBTBasinFaucetModel(product.model);
+    const productIsB = isBBasinFaucetModel(product.model);
+    if ((needsBT && productIsBT) || (!needsBT && productIsB)) {
+      variants.push({
+        ...product,
+        sourceType: needsBT ? "BT面盆龍頭" : "B面盆龍頭",
+        features: `${needsBT ? "BT系列，不附落水頭，適用瓷蓋落水頭面盆" : "B系列，含一般落水頭/排桿，適用一般面盆"}｜${product.features || ""}`
+      });
+    }
+  });
+
+  const deduped = new Map();
+  variants.forEach((item) => {
+    const key = String(item.model || "").toUpperCase();
+    const existing = deduped.get(key);
+    if (!existing || Number(item.listPrice || 0) < Number(existing.listPrice || 0)) deduped.set(key, item);
+  });
+
+  return [...deduped.values()].sort((a, b) => {
+    if (a.sort !== b.sort) return a.sort - b.sort;
+    return Number(a.listPrice || 0) - Number(b.listPrice || 0);
+  });
+}
+
+function buildFixedChargeCandidate(demand) {
+  return {
+    visible: true,
+    category: demand.type,
+    model: demand.fixedModel || demand.id,
+    name: demand.fixedName || demand.label,
+    listPrice: Number(demand.fixedPrice || 0),
+    width: 0,
+    size: "",
+    features: demand.fixedFeatures || "固定加價品項",
+    accessible: false,
+    sort: 1,
+    imageUrl: "",
+    officialUrl: "",
+    note: "前端依需求動態加入，非 PRODUCT_MASTER 實體列。",
+    source: "frontend-dynamic",
+    pipeDistance: ""
+  };
+}
 
 function buildDemands() {
   const demands = [];
@@ -507,7 +694,29 @@ function buildDemands() {
     }
   });
 
-  addQtyDemand("basinFaucetQty", "basinFaucet", "面盆龍頭");
+  const basinFaucetQty = getQty("basinFaucetQty");
+  if (basinFaucetQty > 0) {
+    const basinDrainMode = getBasinDrainMode();
+    demands.push({
+      id: "basinFaucet-basinFaucetQty",
+      type: "basinFaucet",
+      label: `面盆龍頭｜${getBasinDrainLabel(basinDrainMode)}`,
+      qty: basinFaucetQty,
+      basinDrainMode
+    });
+    if (basinDrainMode === "ceramicPopUp") {
+      demands.push({
+        id: "basinCeramicDrainUpgrade-basinFaucetQty",
+        type: "fixedCharge",
+        label: "彈跳瓷蓋落水頭選配",
+        qty: basinFaucetQty,
+        fixedModel: "瓷蓋彈跳落水頭 +900",
+        fixedName: "彈跳瓷蓋落水頭選配",
+        fixedPrice: 900,
+        fixedFeatures: "瓷蓋排桿面盆選配；仍搭配 BT 系列面盆龍頭"
+      });
+    }
+  }
 
   const showerQty = getQty("showerFaucetQty");
   if (showerQty > 0) {
@@ -754,7 +963,9 @@ function buildShowerSliderBundles() {
 function findCandidates(demand, preferAccessible) {
   let candidates;
 
-  if (demand.type === "toiletCombo") {
+  if (demand.type === "fixedCharge") {
+    candidates = [buildFixedChargeCandidate(demand)];
+  } else if (demand.type === "toiletCombo") {
     candidates = buildToiletSeatBundles();
   } else if (demand.type === "showerSlider") {
     candidates = buildShowerSliderBundles();
@@ -934,6 +1145,10 @@ function findSimpleCandidates(demand) {
 
   if (demand.type === "bidetSeat") {
     candidates = candidates.filter((p) => isBidetSeatProduct(p) && getSeatFitGroup(p) !== "exclude");
+  }
+
+  if (demand.type === "basinFaucet") {
+    candidates = buildBasinFaucetVariants(candidates, demand);
   }
 
   if (demand.width) {
